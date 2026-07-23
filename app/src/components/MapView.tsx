@@ -8,6 +8,12 @@ const RENTON_WA: LatLngTuple = [47.4829, -122.2171];
 
 export type MapEditMode = "view" | "reposition" | "add" | "bulkAdd" | "select" | "delete";
 
+// How far below its true lat/lng the dot is drawn (iconAnchor: [7, -8] means
+// the dot's visible center sits at -(-8) + 7 = 15px below the real point).
+// RectSelectTool has to shift its hit-test by this same amount, or a box
+// drawn around the visible dots won't match what's actually captured.
+const DOT_VISUAL_OFFSET_Y = 15;
+
 function houseIcon(color: string, selected: boolean, deleteMode: boolean) {
   const ring = selected ? "#2563eb" : deleteMode ? "#b91c1c" : "#1f2937";
   const ringWidth = selected ? 3 : 1.5;
@@ -18,7 +24,7 @@ function houseIcon(color: string, selected: boolean, deleteMode: boolean) {
     // Anchor above center (not [7, 7]) so the dot renders a few pixels below
     // the actual geocoded point instead of sitting directly on top of the
     // house-number label printed on the OSM tile. Purely visual -- the real
-    // lat/lng used for box-select etc. is untouched.
+    // lat/lng used for box-select etc. is untouched (see DOT_VISUAL_OFFSET_Y).
     iconAnchor: [7, -8],
   });
 }
@@ -76,7 +82,15 @@ function RectSelectTool({
         const bounds = L.latLngBounds(start, map.mouseEventToLatLng(e));
         const ids = new Set(
           houses
-            .filter((h) => h.lat != null && h.lng != null && bounds.contains([h.lat, h.lng]))
+            .filter((h) => {
+              if (h.lat == null || h.lng == null) return false;
+              // Test against where the dot is actually drawn, not the raw
+              // geocoded point -- otherwise a box drawn around the visible
+              // dots silently selects the wrong houses.
+              const point = map.latLngToContainerPoint([h.lat, h.lng]);
+              const shifted = L.point(point.x, point.y + DOT_VISUAL_OFFSET_Y);
+              return bounds.contains(map.containerPointToLatLng(shifted));
+            })
             .map((h) => h.id)
         );
         onSelect(ids);

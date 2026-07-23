@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useAuth } from "../hooks/useAuth";
 import { useZonesAndHouses } from "../hooks/useZonesAndHouses";
 import { useAssignments } from "../hooks/useAssignments";
 import { useCampaigns } from "../hooks/useCampaigns";
@@ -11,9 +12,60 @@ export function AdminPage({ campaignId }: { campaignId: string | null }) {
     <div className="admin-page">
       <ZonesSection />
       <AssignmentsSection campaignId={campaignId} />
+      <PeopleSection />
       <InvitationsSection />
       <CampaignsSection />
     </div>
+  );
+}
+
+function PeopleSection() {
+  const { profile: myProfile } = useAuth();
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = () => {
+    supabase
+      .from("profiles")
+      .select("*")
+      .order("display_name")
+      .then(({ data }) => setProfiles(data ?? []));
+  };
+
+  useEffect(refresh, []);
+
+  const handleRoleChange = async (id: string, role: Role) => {
+    setError(null);
+    const { error: updateError } = await supabase.from("profiles").update({ role }).eq("id", id);
+    if (updateError) setError(updateError.message);
+    else refresh();
+  };
+
+  return (
+    <section className="admin-section">
+      <h3>People</h3>
+      <p className="hint">
+        Anyone who signs in without an invite starts as a volunteer -- promote someone to admin
+        here at any time. (Your own row is locked to avoid accidentally demoting yourself.)
+      </p>
+      {error && <p className="error">{error}</p>}
+      <ul className="admin-list">
+        {profiles.map((p) => (
+          <li key={p.id}>
+            {p.display_name ?? p.email}
+            {p.id === myProfile?.id && " (you)"}
+            <select
+              value={p.role}
+              disabled={p.id === myProfile?.id}
+              onChange={(e) => handleRoleChange(p.id, e.target.value as Role)}
+            >
+              <option value="volunteer">Volunteer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

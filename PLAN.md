@@ -12,9 +12,10 @@ A small web app for Boulevard Lane Community Association volunteers to:
 - Let anyone — logged in or not — view the current map and delivery status. Only signed-in
   volunteers/admins can change anything.
 
-Everyone who signs in starts out as an admin. Real RBAC (admin vs. volunteer) is built from day
-one, but the *default* role is simply set to admin for now — tightening it later is a one-line
-config change plus inviting people with the `volunteer` role instead.
+Real RBAC (admin vs. volunteer) is built from day one. Early on, everyone who signed in started
+out as an admin; as of migration 0008 anyone signing in without a matching `invitations` row now
+defaults to `volunteer` instead. Admins can promote anyone to admin directly from the Admin page's
+People section.
 
 ## 2. Chosen stack
 
@@ -38,7 +39,7 @@ profiles
   id            uuid PK, references auth.users(id)
   email         text
   display_name  text
-  role          text  -- 'admin' | 'volunteer'  (default 'admin' for now, see §6)
+  role          text  -- 'admin' | 'volunteer'  (default 'volunteer' unless invited as admin, see §4)
   created_at    timestamptz default now()
 
 zones
@@ -107,8 +108,9 @@ houses/zones.
   `campaigns`, `assignments`, `invitations`, and `profiles.role` for other users.
 - A Postgres trigger on `auth.users` insert creates the matching `profiles` row. Role is resolved
   as: if an `invitations` row exists for that email, use its `role` and mark it accepted;
-  otherwise default to `'admin'` (the "everyone's an admin to start" behavior from §1). Flipping
-  the default to `'volunteer'` later is the whole migration needed to start requiring invites.
+  otherwise default to `'volunteer'` (migration 0008). Anyone who signs in without an invite lands
+  as a volunteer with no assignments yet -- an admin promotes them from the Admin page's People
+  section if needed.
 
 ## 5. Realtime update flow
 

@@ -27,13 +27,6 @@ export interface House {
   created_at: string;
 }
 
-export interface Route {
-  id: number;
-  number: number;
-  name: string | null;
-  created_at: string;
-}
-
 export interface Campaign {
   id: string;
   slug: string;
@@ -46,7 +39,8 @@ export interface Campaign {
 export interface Assignment {
   id: number;
   campaign_id: string;
-  route_id: number;
+  zone_id: number | null;
+  house_id: number | null;
   volunteer_id: string;
   assigned_by: string | null;
   assigned_at: string;

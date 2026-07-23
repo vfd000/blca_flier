@@ -3,31 +3,37 @@ import { useAuth } from "../hooks/useAuth";
 import { useZonesAndHouses } from "../hooks/useZonesAndHouses";
 import { useDeliveryStatus } from "../hooks/useDeliveryStatus";
 import { useAssignments, canEditHouse } from "../hooks/useAssignments";
-import { useRoutes } from "../hooks/useRoutes";
 import { MapView, type MapEditMode } from "../components/MapView";
 import { MapToolbar } from "../components/MapToolbar";
 import { NewHouseForm } from "../components/NewHouseForm";
 import { BulkAssignPanel } from "../components/BulkAssignPanel";
 import { StatusLegend } from "../components/StatusLegend";
 import { supabase } from "../lib/supabaseClient";
-import type { DeliveryStatusValue } from "../lib/types";
+import type { DeliveryStatusValue, House } from "../lib/types";
+
+interface Notice {
+  kind: "error" | "success";
+  message: string;
+}
 
 export function MapPage({ campaignId }: { campaignId: string | null }) {
   const { session, profile, isAdmin } = useAuth();
   const { zones, houses, removeHouseLocally, upsertHouseLocally } = useZonesAndHouses();
   const { statusByHouse, setStatus } = useDeliveryStatus(campaignId);
   const { assignments } = useAssignments(campaignId);
-  const { routes, houseIdsByRoute, routeIdsByHouse, refresh: refreshRoutes } = useRoutes();
 
   const [editMode, setEditMode] = useState<MapEditMode>("view");
   const [placingHouseId, setPlacingHouseId] = useState<number | null>(null);
   const [pendingNewHouse, setPendingNewHouse] = useState<{ lat: number; lng: number } | null>(null);
   const [pendingDeleteHouseId, setPendingDeleteHouseId] = useState<number | null>(null);
   const [selectedHouseIds, setSelectedHouseIds] = useState<Set<number>>(new Set());
-  const [mapError, setMapError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const unplaced = houses.filter((h) => h.lat == null || h.lng == null);
   const pendingDeleteHouse = houses.find((h) => h.id === pendingDeleteHouseId) ?? null;
+
+  const showError = (message: string) => setNotice({ kind: "error", message });
+  const showSuccess = (message: string) => setNotice({ kind: "success", message });
 
   const handleSetStatus = (houseId: number, status: DeliveryStatusValue) => {
     if (!session) return;
@@ -35,11 +41,12 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
   };
 
   const handlePlaceHouse = async (houseId: number, lat: number, lng: number) => {
-    const { error, data } = await supabase.from("houses").update({ lat, lng }).eq("id", houseId).select().single();
-    if (error) return setMapError(`Couldn't move house: ${error.message}`);
-    if (!data) return setMapError("Move didn't take effect - check you're signed in as admin.");
+    const { error, data } = await supabase.from("houses").update({ lat, lng }).eq("id", houseId).select().maybeSingle();
+    if (error) return showError(`Couldn't move house: ${error.message}`);
+    if (!data) return showError("Move didn't take effect (no matching row) - check you're signed in as admin.");
     upsertHouseLocally(data);
     setPlacingHouseId(null);
+    showSuccess(`Moved ${data.address}.`);
   };
 
   const handleAddHouseAt = (lat: number, lng: number) => {
@@ -52,10 +59,12 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
       .from("houses")
       .insert({ zone_id: zoneId, address, lat: pendingNewHouse.lat, lng: pendingNewHouse.lng })
       .select()
-      .single();
-    if (error) return setMapError(`Couldn't create house: ${error.message}`);
-    if (data) upsertHouseLocally(data);
+      .maybeSingle();
+    if (error) return showError(`Couldn't create house: ${error.message}`);
+    if (!data) return showError("Create didn't return the new house - check you're signed in as admin.");
+    upsertHouseLocally(data);
     setPendingNewHouse(null);
+    showSuccess(`Added ${data.address}.`);
   };
 
   const handleDeleteHouse = (houseId: number) => {
@@ -65,35 +74,40 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
   const confirmDeleteHouse = async () => {
     if (pendingDeleteHouseId == null) return;
     const houseId = pendingDeleteHouseId;
+    const houseBeforeDelete = houses.find((h) => h.id === houseId);
     const { error, data } = await supabase.from("houses").delete().eq("id", houseId).select();
     setPendingDeleteHouseId(null);
-    if (error) return setMapError(`Couldn't delete house: ${error.message}`);
-    if (!data || data.length === 0) return setMapError("Delete didn't affect any rows - check you're signed in as admin.");
+    if (error) return showError(`Couldn't delete house: ${error.message}`);
+    if (!data || data.length === 0) return showError("Delete didn't affect any rows - check you're signed in as admin.");
     removeHouseLocally(houseId);
+    showSuccess(`Deleted ${houseBeforeDelete?.address ?? "house"}.`);
   };
 
-  const handleAddToRoute = async (routeId: number) => {
-    if (selectedHouseIds.size === 0) return;
-    const rows = Array.from(selectedHouseIds).map((houseId) => ({ route_id: routeId, house_id: houseId }));
-    const { error } = await supabase.from("route_houses").upsert(rows, { onConflict: "route_id,house_id" });
-    if (error) return setMapError(`Couldn't add houses to route: ${error.message}`);
+  const handleAddToZone = async (zoneId: number) => {
+    if (selectedHouseIds.size === 0) return showError("No houses selected.");
+    const ids = Array.from(selectedHouseIds);
+    const { error, data } = await supabase.from("houses").update({ zone_id: zoneId }).in("id", ids).select();
+    if (error) return showError(`Couldn't add houses to zone: ${error.message}`);
+    if (!data || data.length === 0) return showError("Update didn't affect any rows - check you're signed in as admin.");
+    data.forEach((h: House) => upsertHouseLocally(h));
     setSelectedHouseIds(new Set());
-    refreshRoutes();
+    showSuccess(`Added ${data.length} house${data.length === 1 ? "" : "s"} to the zone.`);
   };
 
-  const handleCreateRoute = async (number: number, name: string) => {
-    if (selectedHouseIds.size === 0) return;
-    const { error: routeError, data: route } = await supabase
-      .from("routes")
+  const handleCreateZone = async (number: number, name: string) => {
+    if (selectedHouseIds.size === 0) return showError("No houses selected.");
+    const { error: zoneError, data: zone } = await supabase
+      .from("zones")
       .insert({ number, name: name || null })
       .select()
-      .single();
-    if (routeError || !route) return setMapError(`Couldn't create route: ${routeError?.message}`);
-    const rows = Array.from(selectedHouseIds).map((houseId) => ({ route_id: route.id, house_id: houseId }));
-    const { error: linkError } = await supabase.from("route_houses").insert(rows);
-    if (linkError) return setMapError(`Route created but couldn't add houses: ${linkError.message}`);
+      .maybeSingle();
+    if (zoneError || !zone) return showError(`Couldn't create zone: ${zoneError?.message}`);
+    const ids = Array.from(selectedHouseIds);
+    const { error: updateError, data } = await supabase.from("houses").update({ zone_id: zone.id }).in("id", ids).select();
+    if (updateError) return showError(`Zone created but couldn't add houses: ${updateError.message}`);
+    (data ?? []).forEach((h: House) => upsertHouseLocally(h));
     setSelectedHouseIds(new Set());
-    refreshRoutes();
+    showSuccess(`Created Zone ${zone.number} with ${data?.length ?? 0} houses.`);
   };
 
   const handleModeChange = (mode: MapEditMode) => {
@@ -115,10 +129,10 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
 
   return (
     <div className="map-page">
-      {mapError && (
-        <div className="map-error-banner">
-          {mapError}
-          <button className="btn" onClick={() => setMapError(null)}>
+      {notice && (
+        <div className={`map-notice-banner map-notice-${notice.kind}`}>
+          {notice.message}
+          <button className="btn" onClick={() => setNotice(null)}>
             &times;
           </button>
         </div>
@@ -126,7 +140,7 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
       <MapView
         houses={houses}
         statusByHouse={statusByHouse}
-        canEditHouse={(house) => isAdmin || canEditHouse(assignments, routeIdsByHouse, profile?.id, house.id)}
+        canEditHouse={(house) => isAdmin || canEditHouse(assignments, profile?.id, house.id, house.zone_id)}
         onSetStatus={handleSetStatus}
         isAdmin={isAdmin}
         editMode={editMode}
@@ -154,7 +168,7 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
           </button>
           <h3>Delete house?</h3>
           <p>{pendingDeleteHouse.address}</p>
-          <p className="hint">This also removes its status/route history. Cannot be undone.</p>
+          <p className="hint">This also removes its status/assignment history. Cannot be undone.</p>
           <div className="house-panel-actions">
             <button className="btn btn-danger" onClick={confirmDeleteHouse}>
               Delete
@@ -168,9 +182,9 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
       {isAdmin && editMode === "select" && (
         <BulkAssignPanel
           count={selectedHouseIds.size}
-          routes={routes}
-          onAddToRoute={handleAddToRoute}
-          onCreateRoute={handleCreateRoute}
+          zones={zones}
+          onAddToZone={handleAddToZone}
+          onCreateZone={handleCreateZone}
           onClear={() => setSelectedHouseIds(new Set())}
         />
       )}
@@ -197,9 +211,6 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
               ))}
             </ul>
           </div>
-        )}
-        {isAdmin && houseIdsByRoute.size === 0 && houses.length > 0 && (
-          <p className="hint">No routes yet. Use "Select &amp; assign" to draw one, or manage them on the Admin page.</p>
         )}
       </div>
     </div>

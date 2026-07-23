@@ -1,27 +1,27 @@
 import { useState, type FormEvent } from "react";
-import type { Route } from "../lib/types";
+import type { Zone } from "../lib/types";
 
 interface Props {
   count: number;
-  routes: Route[];
-  onAddToRoute: (routeId: number) => void;
-  onCreateRoute: (number: number, name: string) => void;
+  zones: Zone[];
+  onAddToZone: (zoneId: number) => void;
+  onCreateZone: (number: number, name: string) => void;
   onClear: () => void;
 }
 
-export function BulkAssignPanel({ count, routes, onAddToRoute, onCreateRoute, onClear }: Props) {
-  const [existingRouteId, setExistingRouteId] = useState("");
+export function BulkAssignPanel({ count, zones, onAddToZone, onCreateZone, onClear }: Props) {
+  const [existingZoneId, setExistingZoneId] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [newName, setNewName] = useState("");
 
   if (count === 0) return null;
 
-  const nextSuggestedNumber = routes.length > 0 ? Math.max(...routes.map((r) => r.number)) + 1 : 1;
+  const nextSuggestedNumber = zones.length > 0 ? Math.max(...zones.map((z) => z.number)) + 1 : 1;
 
   const handleCreate = (e: FormEvent) => {
     e.preventDefault();
     const number = newNumber ? Number(newNumber) : nextSuggestedNumber;
-    onCreateRoute(number, newName);
+    onCreateZone(number, newName);
     setNewNumber("");
     setNewName("");
   };
@@ -31,38 +31,48 @@ export function BulkAssignPanel({ count, routes, onAddToRoute, onCreateRoute, on
       <h3>
         {count} house{count === 1 ? "" : "s"} selected
       </h3>
-      <p className="hint">Routes are durable delivery groups - draw them once, reuse them campaign after campaign.</p>
+      <p className="hint">Sets each selected house's zone - reassign them to an existing zone or start a new one.</p>
 
       <div className="admin-form">
-        <select value={existingRouteId} onChange={(e) => setExistingRouteId(e.target.value)}>
+        <select value={existingZoneId} onChange={(e) => setExistingZoneId(e.target.value)}>
           <option value="" disabled>
-            Add to existing route...
+            Add to existing zone...
           </option>
-          {routes.map((r) => (
-            <option key={r.id} value={r.id}>
-              Route {r.number} {r.name ? `(${r.name})` : ""}
+          {zones.map((z) => (
+            <option key={z.id} value={z.id}>
+              Zone {z.number} {z.name ? `(${z.name})` : ""}
             </option>
           ))}
         </select>
         <button
           className="btn btn-primary"
-          disabled={!existingRouteId}
-          onClick={() => onAddToRoute(Number(existingRouteId))}
+          disabled={!existingZoneId}
+          onClick={() => onAddToZone(Number(existingZoneId))}
         >
-          Add to route
+          Add to zone
         </button>
       </div>
 
       <form className="admin-form" onSubmit={handleCreate}>
         <input
           type="number"
-          placeholder={`New route # (suggested: ${nextSuggestedNumber})`}
+          data-1p-ignore="true"
+          data-lpignore="true"
+          autoComplete="off"
+          placeholder={`New zone # (suggested: ${nextSuggestedNumber})`}
           value={newNumber}
           onChange={(e) => setNewNumber(e.target.value)}
         />
-        <input placeholder="Name (optional)" value={newName} onChange={(e) => setNewName(e.target.value)} />
+        <input
+          data-1p-ignore="true"
+          data-lpignore="true"
+          autoComplete="off"
+          placeholder="Name (optional)"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+        />
         <button className="btn btn-primary" type="submit">
-          Create new route
+          Create new zone
         </button>
       </form>
 

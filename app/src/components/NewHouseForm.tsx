@@ -73,6 +73,10 @@ export function NewHouseForm({ lat, lng, zones, onCreate, onCancel }: Props) {
           onChange={(e) => setAddress(e.target.value)}
           autoFocus
           required
+          autoComplete="off"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-form-type="other"
         />
         {looking && <p className="hint">Looking up address from OpenStreetMap...</p>}
         <select value={zoneId} onChange={(e) => setZoneId(e.target.value)}>

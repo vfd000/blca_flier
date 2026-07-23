@@ -2,7 +2,6 @@ import { useAuth } from "../hooks/useAuth";
 import { useZonesAndHouses } from "../hooks/useZonesAndHouses";
 import { useDeliveryStatus } from "../hooks/useDeliveryStatus";
 import { useAssignments } from "../hooks/useAssignments";
-import { useRoutes } from "../hooks/useRoutes";
 import { STATUS_LABELS, type DeliveryStatusValue } from "../lib/types";
 
 const ORDER: DeliveryStatusValue[] = ["not_started", "no_answer", "delivered", "skipped"];
@@ -11,17 +10,13 @@ export function MyHousesPage({ campaignId }: { campaignId: string | null }) {
   const { session, profile } = useAuth();
   const { houses } = useZonesAndHouses();
   const { assignments } = useAssignments(campaignId);
-  const { houseIdsByRoute } = useRoutes();
   const { statusByHouse, setStatus } = useDeliveryStatus(campaignId);
 
   if (!session || !profile) return <p className="hint">Sign in to see your assigned houses.</p>;
 
-  const myRouteIds = new Set(assignments.filter((a) => a.volunteer_id === profile.id).map((a) => a.route_id));
-  const myHouseIds = new Set<number>();
-  for (const routeId of myRouteIds) {
-    for (const houseId of houseIdsByRoute.get(routeId) ?? []) myHouseIds.add(houseId);
-  }
-  const myHouses = houses.filter((h) => myHouseIds.has(h.id));
+  const myZoneIds = new Set(assignments.filter((a) => a.volunteer_id === profile.id && a.zone_id != null).map((a) => a.zone_id));
+  const myHouseIds = new Set(assignments.filter((a) => a.volunteer_id === profile.id && a.house_id != null).map((a) => a.house_id));
+  const myHouses = houses.filter((h) => myHouseIds.has(h.id) || (h.zone_id != null && myZoneIds.has(h.zone_id)));
 
   if (!campaignId) return <p className="hint">Pick a campaign above first.</p>;
   if (myHouses.length === 0) return <p className="hint">No houses assigned to you yet for this campaign.</p>;

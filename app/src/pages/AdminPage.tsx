@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useZonesAndHouses } from "../hooks/useZonesAndHouses";
 import { useAssignments } from "../hooks/useAssignments";
 import { useCampaigns } from "../hooks/useCampaigns";
+import { defaultZoneColorHex } from "../lib/colors";
 import type { Invitation, Profile, Role } from "../lib/types";
 
 export function AdminPage({ campaignId }: { campaignId: string | null }) {
@@ -38,6 +39,12 @@ function ZonesSection() {
   const handleDelete = async (id: number) => {
     const { error: deleteError } = await supabase.from("zones").delete().eq("id", id);
     if (deleteError) setError(deleteError.message);
+    else refresh();
+  };
+
+  const handleColorChange = async (id: number, color: string | null) => {
+    const { error: updateError } = await supabase.from("zones").update({ color }).eq("id", id);
+    if (updateError) setError(updateError.message);
     else refresh();
   };
 
@@ -81,8 +88,20 @@ function ZonesSection() {
       <ul className="admin-list">
         {zones.map((z) => (
           <li key={z.id}>
+            <input
+              type="color"
+              className="zone-color-input"
+              value={z.color ?? defaultZoneColorHex(z.id)}
+              onChange={(e) => handleColorChange(z.id, e.target.value)}
+              title="Zone color"
+            />
             Zone {z.number} {z.name ? `(${z.name})` : ""} -- {houseCountByZone.get(z.id) ?? 0} house
             {(houseCountByZone.get(z.id) ?? 0) === 1 ? "" : "s"}
+            {z.color && (
+              <button className="btn btn-link" onClick={() => handleColorChange(z.id, null)}>
+                reset color
+              </button>
+            )}
             <button className="btn btn-link" onClick={() => handleDelete(z.id)}>
               delete
             </button>

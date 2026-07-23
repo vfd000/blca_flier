@@ -18,8 +18,7 @@ const DOT_VISUAL_OFFSET_Y = 15;
 // Fill = zone (so routes/clusters read at a glance); ring = delivery status,
 // with a checkmark on top once delivered so "done" doesn't rely on color
 // alone.
-function houseIcon(zoneId: number | null, status: DeliveryStatusValue, selected: boolean, deleteMode: boolean) {
-  const fill = zoneColor(zoneId);
+function houseIcon(fill: string, status: DeliveryStatusValue, selected: boolean, deleteMode: boolean) {
   const ring = selected ? "#2563eb" : deleteMode ? "#b91c1c" : STATUS_COLORS[status];
   const ringWidth = selected ? 4 : status === "delivered" ? 3.5 : 2;
   const checkmark =
@@ -173,6 +172,7 @@ export function MapView({
   const positions = useMemo<LatLngTuple[]>(() => placed.map((h) => [h.lat as number, h.lng as number]), [placed]);
   const openHouse = houses.find((h) => h.id === openHouseId) ?? null;
   const openHouseZone = openHouse ? zones.find((z) => z.id === openHouse.zone_id) ?? null : null;
+  const zoneColorById = useMemo(() => new Map(zones.map((z) => [z.id, z.color])), [zones]);
 
   return (
     <div className={`map-wrap map-mode-${editMode}`}>
@@ -201,7 +201,12 @@ export function MapView({
             <Marker
               key={house.id}
               position={[house.lat as number, house.lng as number]}
-              icon={houseIcon(house.zone_id, status, selected, editMode === "delete")}
+              icon={houseIcon(
+                zoneColor(house.zone_id, zoneColorById.get(house.zone_id ?? -1)),
+                status,
+                selected,
+                editMode === "delete"
+              )}
               draggable={draggable}
               eventHandlers={{
                 dragend: (e) => {

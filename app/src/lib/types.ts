@@ -14,6 +14,7 @@ export interface Zone {
   id: number;
   number: number;
   name: string | null;
+  color: string | null;
   created_at: string;
 }
 

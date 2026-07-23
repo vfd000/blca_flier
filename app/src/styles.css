@@ -294,6 +294,7 @@ body {
 }
 
 .map-mode-add .leaflet-container,
+.map-mode-bulkAdd .leaflet-container,
 .map-mode-select .leaflet-container {
   cursor: crosshair;
 }
@@ -346,6 +347,18 @@ body {
 .bulk-assign-panel .admin-form {
   flex-direction: column;
   align-items: stretch;
+}
+
+.bulk-add-panel select {
+  width: 100%;
+  padding: 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+.bulk-add-count {
+  font-weight: 600;
+  margin: 0.6rem 0;
 }
 
 .btn-danger {

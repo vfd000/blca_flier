@@ -7,8 +7,10 @@ import { MapView, type MapEditMode } from "../components/MapView";
 import { MapToolbar } from "../components/MapToolbar";
 import { NewHouseForm } from "../components/NewHouseForm";
 import { BulkAssignPanel } from "../components/BulkAssignPanel";
+import { BulkAddPanel } from "../components/BulkAddPanel";
 import { StatusLegend } from "../components/StatusLegend";
 import { supabase } from "../lib/supabaseClient";
+import { reverseGeocode } from "../lib/geocode";
 import type { DeliveryStatusValue, House } from "../lib/types";
 
 interface Notice {
@@ -28,6 +30,9 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
   const [pendingDeleteHouseId, setPendingDeleteHouseId] = useState<number | null>(null);
   const [selectedHouseIds, setSelectedHouseIds] = useState<Set<number>>(new Set());
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [bulkAddZoneId, setBulkAddZoneId] = useState("");
+  const [bulkAddCount, setBulkAddCount] = useState(0);
+  const [lastBulkAddedHouseId, setLastBulkAddedHouseId] = useState<number | null>(null);
 
   const unplaced = houses.filter((h) => h.lat == null || h.lng == null);
   const pendingDeleteHouse = houses.find((h) => h.id === pendingDeleteHouseId) ?? null;
@@ -65,6 +70,35 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
     upsertHouseLocally(data);
     setPendingNewHouse(null);
     showSuccess(`Added ${data.address}.`);
+  };
+
+  const handleBulkAddHouseAt = async (lat: number, lng: number) => {
+    const address = (await reverseGeocode(lat, lng)) ?? `Unnamed house near ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    const zoneId = bulkAddZoneId ? Number(bulkAddZoneId) : null;
+    const { error, data } = await supabase
+      .from("houses")
+      .insert({ zone_id: zoneId, address, lat, lng })
+      .select()
+      .maybeSingle();
+    if (error) return showError(`Couldn't add house: ${error.message}`);
+    if (!data) return showError("Create didn't return the new house - check you're signed in as admin.");
+    upsertHouseLocally(data);
+    setBulkAddCount((c) => c + 1);
+    setLastBulkAddedHouseId(data.id);
+    showSuccess(`Added ${data.address}.`);
+  };
+
+  const handleUndoLastBulkAdd = async () => {
+    if (lastBulkAddedHouseId == null) return;
+    const houseId = lastBulkAddedHouseId;
+    const houseBeforeDelete = houses.find((h) => h.id === houseId);
+    const { error, data } = await supabase.from("houses").delete().eq("id", houseId).select();
+    if (error) return showError(`Couldn't undo: ${error.message}`);
+    if (!data || data.length === 0) return showError("Undo didn't affect any rows.");
+    removeHouseLocally(houseId);
+    setBulkAddCount((c) => Math.max(0, c - 1));
+    setLastBulkAddedHouseId(null);
+    showSuccess(`Removed ${houseBeforeDelete?.address ?? "house"}.`);
   };
 
   const handleDeleteHouse = (houseId: number) => {
@@ -116,6 +150,8 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
     setPendingNewHouse(null);
     setPendingDeleteHouseId(null);
     setSelectedHouseIds(new Set());
+    setBulkAddCount(0);
+    setLastBulkAddedHouseId(null);
   };
 
   const handleToggleHouseSelection = (houseId: number) => {
@@ -147,6 +183,7 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
         placingHouseId={placingHouseId}
         onPlaceHouse={handlePlaceHouse}
         onAddHouseAt={handleAddHouseAt}
+        onBulkAddHouseAt={handleBulkAddHouseAt}
         selectedHouseIds={selectedHouseIds}
         onSelectHouses={setSelectedHouseIds}
         onToggleHouseSelection={handleToggleHouseSelection}
@@ -178,6 +215,16 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
             </button>
           </div>
         </div>
+      )}
+      {isAdmin && editMode === "bulkAdd" && (
+        <BulkAddPanel
+          zones={zones}
+          zoneId={bulkAddZoneId}
+          onZoneChange={setBulkAddZoneId}
+          count={bulkAddCount}
+          canUndo={lastBulkAddedHouseId != null}
+          onUndoLast={handleUndoLastBulkAdd}
+        />
       )}
       {isAdmin && editMode === "select" && (
         <BulkAssignPanel

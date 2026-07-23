@@ -6,7 +6,7 @@ import { HousePanel } from "./HousePanel";
 
 const RENTON_WA: LatLngTuple = [47.4829, -122.2171];
 
-export type MapEditMode = "view" | "reposition" | "add" | "select" | "delete";
+export type MapEditMode = "view" | "reposition" | "add" | "bulkAdd" | "select" | "delete";
 
 function houseIcon(color: string, selected: boolean, deleteMode: boolean) {
   const ring = selected ? "#2563eb" : deleteMode ? "#b91c1c" : "#1f2937";
@@ -119,6 +119,7 @@ interface Props {
   placingHouseId: number | null;
   onPlaceHouse: (houseId: number, lat: number, lng: number) => void;
   onAddHouseAt: (lat: number, lng: number) => void;
+  onBulkAddHouseAt: (lat: number, lng: number) => void;
   selectedHouseIds: Set<number>;
   onSelectHouses: (ids: Set<number>) => void;
   onToggleHouseSelection: (houseId: number) => void;
@@ -135,6 +136,7 @@ export function MapView({
   placingHouseId,
   onPlaceHouse,
   onAddHouseAt,
+  onBulkAddHouseAt,
   selectedHouseIds,
   onSelectHouses,
   onToggleHouseSelection,
@@ -156,8 +158,12 @@ export function MapView({
         <FitBounds positions={positions} />
         {isAdmin && (
           <MapClickListener
-            active={placingHouseId != null || editMode === "add"}
-            onClick={(lat, lng) => (placingHouseId != null ? onPlaceHouse(placingHouseId, lat, lng) : onAddHouseAt(lat, lng))}
+            active={placingHouseId != null || editMode === "add" || editMode === "bulkAdd"}
+            onClick={(lat, lng) => {
+              if (placingHouseId != null) onPlaceHouse(placingHouseId, lat, lng);
+              else if (editMode === "bulkAdd") onBulkAddHouseAt(lat, lng);
+              else onAddHouseAt(lat, lng);
+            }}
           />
         )}
         {isAdmin && <RectSelectTool active={editMode === "select"} houses={placed} onSelect={onSelectHouses} />}

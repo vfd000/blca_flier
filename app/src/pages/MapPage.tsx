@@ -30,7 +30,9 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
   };
 
   const handlePlaceHouse = async (houseId: number, lat: number, lng: number) => {
-    await supabase.from("houses").update({ lat, lng }).eq("id", houseId);
+    const { error, data } = await supabase.from("houses").update({ lat, lng }).eq("id", houseId).select();
+    if (error) return alert(`Couldn't move house: ${error.message}`);
+    if (!data || data.length === 0) return alert("Move didn't take effect (no matching row) - check you're signed in as admin.");
     setPlacingHouseId(null);
     refreshHouses();
   };
@@ -41,12 +43,13 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
 
   const handleCreateHouse = async (address: string, zoneId: number) => {
     if (!pendingNewHouse) return;
-    await supabase.from("houses").insert({
+    const { error } = await supabase.from("houses").insert({
       zone_id: zoneId,
       address,
       lat: pendingNewHouse.lat,
       lng: pendingNewHouse.lng,
     });
+    if (error) return alert(`Couldn't create house: ${error.message}`);
     setPendingNewHouse(null);
     refreshHouses();
   };
@@ -55,7 +58,9 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
     const house = houses.find((h) => h.id === houseId);
     if (!house) return;
     if (!window.confirm(`Delete "${house.address}"? This also removes its status/assignment history.`)) return;
-    await supabase.from("houses").delete().eq("id", houseId);
+    const { error, data } = await supabase.from("houses").delete().eq("id", houseId).select();
+    if (error) return alert(`Couldn't delete house: ${error.message}`);
+    if (!data || data.length === 0) return alert("Delete didn't affect any rows - check you're signed in as admin.");
     refreshHouses();
   };
 
@@ -66,7 +71,8 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
       house_id: houseId,
       volunteer_id: volunteerId,
     }));
-    await supabase.from("assignments").insert(rows);
+    const { error } = await supabase.from("assignments").insert(rows);
+    if (error) return alert(`Couldn't assign houses: ${error.message}`);
     setSelectedHouseIds(new Set());
     refreshAssignments();
   };

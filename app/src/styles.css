@@ -424,3 +424,163 @@ body {
   color: #166534;
   border-color: #86efac;
 }
+
+.my-houses-deliver-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  text-decoration: none;
+}
+
+.delivery-mode {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+.delivery-progress {
+  margin-bottom: 1rem;
+}
+
+.delivery-progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.delivery-progress-fill {
+  height: 100%;
+  background: #22c55e;
+  transition: width 0.3s ease;
+}
+
+.delivery-progress-label {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.delivery-gps-hint {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.delivery-target-card {
+  border: 2px solid #2563eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin: 1rem 0;
+  background: white;
+}
+
+.delivery-target-card.arrived {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.delivery-target-address {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+}
+
+.delivery-target-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.delivery-arrived-badge {
+  background: #22c55e;
+  color: white;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.delivery-directions-link {
+  display: inline-block;
+  margin-bottom: 0.85rem;
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.delivery-directions-link:hover {
+  text-decoration: underline;
+}
+
+.delivery-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.delivery-actions .btn {
+  padding: 0.9rem 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+.delivery-actions .status-btn-delivered {
+  grid-column: 1 / -1;
+  background: #22c55e;
+  color: white;
+  border-color: #22c55e;
+}
+
+.delivery-done {
+  text-align: center;
+  padding: 2rem 1rem;
+  font-size: 1.1rem;
+}
+
+.delivery-list-toggle {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.delivery-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.delivery-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.delivery-list li.is-target {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.delivery-list-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.delivery-list-distance {
+  color: #6b7280;
+  font-size: 0.85rem;
+}

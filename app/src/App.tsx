@@ -7,6 +7,7 @@ import { SignInButton } from "./components/SignInButton";
 import { MapPage } from "./pages/MapPage";
 import { AdminPage } from "./pages/AdminPage";
 import { MyHousesPage } from "./pages/MyHousesPage";
+import { DeliveryModePage } from "./pages/DeliveryModePage";
 
 function Shell() {
   const { session, isAdmin } = useAuth();
@@ -34,6 +35,7 @@ function Shell() {
         <nav>
           <Link to="/">Map</Link>
           {session && <Link to="/my-houses">My houses</Link>}
+          {session && <Link to="/deliver">Deliver</Link>}
           {isAdmin && <Link to="/admin">Admin</Link>}
         </nav>
         <CampaignPicker campaigns={campaigns} selectedId={campaignId} onChange={handleCampaignChange} />
@@ -43,6 +45,7 @@ function Shell() {
         <Routes>
           <Route path="/" element={<MapPage campaignId={campaignId} />} />
           <Route path="/my-houses" element={<MyHousesPage campaignId={campaignId} />} />
+          <Route path="/deliver" element={<DeliveryModePage campaignId={campaignId} />} />
           <Route
             path="/admin"
             element={isAdmin ? <AdminPage campaignId={campaignId} /> : <Navigate to="/" replace />}

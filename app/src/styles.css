@@ -445,6 +445,16 @@ body {
   flex-shrink: 0;
 }
 
+.delivery-install-hint {
+  margin: -0.25rem 0 0.75rem;
+}
+
+.install-hint-inline {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0 0 0.75rem;
+}
+
 .my-houses-deliver-link {
   display: inline-block;
   margin-bottom: 1rem;

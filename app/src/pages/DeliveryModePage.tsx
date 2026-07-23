@@ -6,6 +6,7 @@ import { useAssignments } from "../hooks/useAssignments";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { directionsUrl, distanceMeters, formatDistance, nearestNeighborOrder, type LatLng } from "../lib/geo";
 import { STATUS_LABELS, type DeliveryStatusValue, type House } from "../lib/types";
+import { InstallButton } from "../components/InstallButton";
 
 // Suburban GPS accuracy under tree cover is often 15-30m, so "arrived"
 // needs enough slack to trigger while still standing on the right porch.
@@ -81,6 +82,8 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
           {unplacedCount > 0 && ` (${unplacedCount} assigned house${unplacedCount === 1 ? "" : "s"} not yet on the map)`}
         </div>
       </div>
+
+      <InstallButton className="delivery-install-hint" />
 
       {!geo.supported && <p className="delivery-gps-hint">GPS isn't available on this device -- showing address order.</p>}
       {geo.error && <p className="delivery-gps-hint">Location error: {geo.error}. Showing address order instead.</p>}

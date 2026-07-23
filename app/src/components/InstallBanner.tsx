@@ -4,10 +4,10 @@ import { useInstallPrompt } from "../hooks/useInstallPrompt";
 const DISMISS_KEY = "blca-install-dismissed";
 
 export function InstallBanner() {
-  const { installed, canPrompt, promptInstall, showIosHint } = useInstallPrompt();
+  const { installed, canPrompt, promptInstall, hint } = useInstallPrompt();
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === "1");
 
-  if (installed || dismissed || (!canPrompt && !showIosHint)) return null;
+  if (installed || dismissed) return null;
 
   const dismiss = () => {
     localStorage.setItem(DISMISS_KEY, "1");
@@ -30,9 +30,7 @@ export function InstallBanner() {
         </>
       ) : (
         <>
-          <span>
-            Install this app: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.
-          </span>
+          <span>Install this app: {hint}</span>
           <button className="btn btn-link" onClick={dismiss}>
             Got it
           </button>

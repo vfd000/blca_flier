@@ -18,11 +18,23 @@ function isIos(): boolean {
 }
 
 /**
- * Drives the "Install app" banner. Chrome/Edge/Android fire
+ * Manual-install instructions for browsers that never fire
+ * beforeinstallprompt at all -- iOS Safari, Firefox (desktop and
+ * Android), desktop Safari. Without this, those browsers would just show
+ * nothing once `canPrompt` is false.
+ */
+function fallbackHint(): string {
+  if (isIos()) return "Tap Share, then Add to Home Screen.";
+  return 'Look for an install icon in your address bar, or "Install app" / "Add to Home Screen" in your browser menu.';
+}
+
+/**
+ * Drives the "Install app" UI. Chrome/Edge/Android fire
  * `beforeinstallprompt`, which we capture and replay on demand via a
  * button instead of waiting for someone to notice the address-bar icon.
- * iOS Safari never fires that event -- there's no programmatic install
- * there, only Share -> Add to Home Screen -- so we surface a hint instead.
+ * Every other browser (iOS Safari, Firefox, desktop Safari) never fires
+ * that event, so callers should fall back to showing `hint` as plain
+ * instructions whenever `canPrompt` is false.
  */
 export function useInstallPrompt() {
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -56,6 +68,6 @@ export function useInstallPrompt() {
     installed,
     canPrompt: deferredEvent != null,
     promptInstall,
-    showIosHint: !installed && isIos(),
+    hint: fallbackHint(),
   };
 }

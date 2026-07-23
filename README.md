@@ -15,6 +15,21 @@ See [PLAN.md](./PLAN.md) for the architecture, data model, and milestones.
 - `app/` — Vite + React + TypeScript frontend.
 - `.github/workflows/deploy.yml` — builds `app/` and deploys it to GitHub Pages on push to `main`.
 
+## Delivery mode
+
+Signed-in volunteers see a "Deliver" link (also linked from "My houses") that opens a
+mobile-first, one-house-at-a-time view of their assigned houses for the current campaign. It
+uses the device's GPS (`navigator.geolocation.watchPosition`) to continually re-sort remaining
+houses by walking distance from the volunteer's current position, surfaces the nearest one as
+the current target with a "Get directions" link and big status buttons, and flags when the
+volunteer is within ~40m of it. Marking a status removes that house from the list and the next-
+nearest one becomes the new target — no pre-planned route needed, it just follows wherever the
+volunteer actually walks. Falls back to address order if location isn't available.
+
+The app is also installable as a PWA (add to home screen) via `app/public/manifest.webmanifest`
+and a small offline-caching service worker (`app/public/sw.js`), so delivery mode stays usable
+with spotty cell service mid-route.
+
 ## Setting up a Supabase project (once, by a maintainer)
 
 1. Create a free project at [supabase.com](https://supabase.com).

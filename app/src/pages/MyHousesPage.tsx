@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useZonesAndHouses } from "../hooks/useZonesAndHouses";
 import { useDeliveryStatus } from "../hooks/useDeliveryStatus";
@@ -24,6 +25,9 @@ export function MyHousesPage({ campaignId }: { campaignId: string | null }) {
   return (
     <div className="my-houses-page">
       <h3>My houses ({myHouses.length})</h3>
+      <Link to="/deliver" className="btn btn-primary my-houses-deliver-link">
+        Start delivery mode →
+      </Link>
       <ul className="my-houses-list">
         {myHouses.map((house) => {
           const status = statusByHouse.get(house.id) ?? "not_started";

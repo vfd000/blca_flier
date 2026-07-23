@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useCampaigns } from "./hooks/useCampaigns";
 import { CampaignPicker } from "./components/CampaignPicker";
 import { SignInButton } from "./components/SignInButton";
+import { InstallBanner } from "./components/InstallBanner";
 import { MapPage } from "./pages/MapPage";
 import { AdminPage } from "./pages/AdminPage";
 import { MyHousesPage } from "./pages/MyHousesPage";
@@ -41,6 +42,7 @@ function Shell() {
         <CampaignPicker campaigns={campaigns} selectedId={campaignId} onChange={handleCampaignChange} />
         <SignInButton />
       </header>
+      <InstallBanner />
       <main className="app-main">
         <Routes>
           <Route path="/" element={<MapPage campaignId={campaignId} />} />

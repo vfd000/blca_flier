@@ -1,22 +1,26 @@
-import { STATUS_LABELS, type DeliveryStatusValue, type House } from "../lib/types";
+import { STATUS_LABELS, type DeliveryStatusValue, type House, type Zone } from "../lib/types";
 
 const ORDER: DeliveryStatusValue[] = ["not_started", "no_answer", "delivered", "skipped"];
 
 interface Props {
   house: House;
+  zone: Zone | null;
   status: DeliveryStatusValue;
   canEdit: boolean;
   onSetStatus: (status: DeliveryStatusValue) => void;
   onClose: () => void;
 }
 
-export function HousePanel({ house, status, canEdit, onSetStatus, onClose }: Props) {
+export function HousePanel({ house, zone, status, canEdit, onSetStatus, onClose }: Props) {
   return (
     <div className="house-panel">
       <button className="house-panel-close" onClick={onClose} aria-label="Close">
         &times;
       </button>
       <h3>{house.address}</h3>
+      <p className="house-panel-zone">
+        Zone: <strong>{zone ? `${zone.number}${zone.name ? ` (${zone.name})` : ""}` : "None"}</strong>
+      </p>
       <p className="house-panel-status">
         Status: <strong>{STATUS_LABELS[status]}</strong>
       </p>

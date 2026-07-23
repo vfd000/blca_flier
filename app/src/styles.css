@@ -132,7 +132,23 @@ body {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  display: inline-block;
+  border-style: solid;
+  box-sizing: border-box;
+  background: #e5e7eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-dot-check {
+  color: #166534;
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.house-panel-zone {
+  margin: 0.2rem 0;
 }
 
 .house-panel {

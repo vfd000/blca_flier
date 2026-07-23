@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L, { type LatLngTuple } from "leaflet";
-import { STATUS_COLORS, type DeliveryStatusValue, type House } from "../lib/types";
+import { STATUS_COLORS, type DeliveryStatusValue, type House, type Zone } from "../lib/types";
+import { zoneColor } from "../lib/colors";
 import { HousePanel } from "./HousePanel";
 
 const RENTON_WA: LatLngTuple = [47.4829, -122.2171];
@@ -14,12 +15,20 @@ export type MapEditMode = "view" | "reposition" | "add" | "bulkAdd" | "select" |
 // drawn around the visible dots won't match what's actually captured.
 const DOT_VISUAL_OFFSET_Y = 15;
 
-function houseIcon(color: string, selected: boolean, deleteMode: boolean) {
-  const ring = selected ? "#2563eb" : deleteMode ? "#b91c1c" : "#1f2937";
-  const ringWidth = selected ? 3 : 1.5;
+// Fill = zone (so routes/clusters read at a glance); ring = delivery status,
+// with a checkmark on top once delivered so "done" doesn't rely on color
+// alone.
+function houseIcon(zoneId: number | null, status: DeliveryStatusValue, selected: boolean, deleteMode: boolean) {
+  const fill = zoneColor(zoneId);
+  const ring = selected ? "#2563eb" : deleteMode ? "#b91c1c" : STATUS_COLORS[status];
+  const ringWidth = selected ? 4 : status === "delivered" ? 3.5 : 2;
+  const checkmark =
+    status === "delivered" && !selected && !deleteMode
+      ? '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:900;line-height:1;">&#10003;</span>'
+      : "";
   return L.divIcon({
     className: "house-div-icon",
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:${ringWidth}px solid ${ring};"></div>`,
+    html: `<div style="position:relative;box-sizing:border-box;width:14px;height:14px;border-radius:50%;background:${fill};border:${ringWidth}px solid ${ring};">${checkmark}</div>`,
     iconSize: [14, 14],
     // Anchor above center (not [7, 7]) so the dot renders a few pixels below
     // the actual geocoded point instead of sitting directly on top of the
@@ -125,6 +134,7 @@ function RectSelectTool({
 
 interface Props {
   houses: House[];
+  zones: Zone[];
   statusByHouse: Map<number, DeliveryStatusValue>;
   canEditHouse: (house: House) => boolean;
   onSetStatus: (houseId: number, status: DeliveryStatusValue) => void;
@@ -142,6 +152,7 @@ interface Props {
 
 export function MapView({
   houses,
+  zones,
   statusByHouse,
   canEditHouse,
   onSetStatus,
@@ -161,6 +172,7 @@ export function MapView({
   const placed = useMemo(() => houses.filter((h) => h.lat != null && h.lng != null), [houses]);
   const positions = useMemo<LatLngTuple[]>(() => placed.map((h) => [h.lat as number, h.lng as number]), [placed]);
   const openHouse = houses.find((h) => h.id === openHouseId) ?? null;
+  const openHouseZone = openHouse ? zones.find((z) => z.id === openHouse.zone_id) ?? null : null;
 
   return (
     <div className={`map-wrap map-mode-${editMode}`}>
@@ -189,7 +201,7 @@ export function MapView({
             <Marker
               key={house.id}
               position={[house.lat as number, house.lng as number]}
-              icon={houseIcon(STATUS_COLORS[status], selected, editMode === "delete")}
+              icon={houseIcon(house.zone_id, status, selected, editMode === "delete")}
               draggable={draggable}
               eventHandlers={{
                 dragend: (e) => {
@@ -209,6 +221,7 @@ export function MapView({
       {editMode === "view" && openHouse && (
         <HousePanel
           house={openHouse}
+          zone={openHouseZone}
           status={statusByHouse.get(openHouse.id) ?? "not_started"}
           canEdit={canEditHouse(openHouse)}
           onSetStatus={(status) => onSetStatus(openHouse.id, status)}

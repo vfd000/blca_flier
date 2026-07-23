@@ -3,7 +3,7 @@ import type { Campaign } from "../lib/types";
 interface Props {
   campaigns: Campaign[];
   selectedId: string | null;
-  onChange: (id: string) => void;
+  onChange: (id: string | null) => void;
 }
 
 export function CampaignPicker({ campaigns, selectedId, onChange }: Props) {
@@ -12,9 +12,10 @@ export function CampaignPicker({ campaigns, selectedId, onChange }: Props) {
     <select
       className="campaign-picker"
       value={selectedId ?? ""}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value || null)}
       aria-label="Campaign"
     >
+      <option value="">No campaign (zones only)</option>
       {campaigns.map((c) => (
         <option key={c.id} value={c.id}>
           {c.name}

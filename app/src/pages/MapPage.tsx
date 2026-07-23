@@ -41,7 +41,7 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
   const showSuccess = (message: string) => setNotice({ kind: "success", message });
 
   const handleSetStatus = (houseId: number, status: DeliveryStatusValue) => {
-    if (!session) return;
+    if (!session || !campaignId) return;
     setStatus(houseId, status, session.user.id);
   };
 
@@ -175,8 +175,11 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
       )}
       <MapView
         houses={houses}
+        zones={zones}
         statusByHouse={statusByHouse}
-        canEditHouse={(house) => isAdmin || canEditHouse(assignments, profile?.id, house.id, house.zone_id)}
+        canEditHouse={(house) =>
+          campaignId != null && (isAdmin || canEditHouse(assignments, profile?.id, house.id, house.zone_id))
+        }
         onSetStatus={handleSetStatus}
         isAdmin={isAdmin}
         editMode={editMode}

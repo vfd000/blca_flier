@@ -5,7 +5,7 @@ interface Props {
   lat: number;
   lng: number;
   zones: Zone[];
-  onCreate: (address: string, zoneId: number) => void;
+  onCreate: (address: string, zoneId: number | null) => void;
   onCancel: () => void;
 }
 
@@ -53,8 +53,8 @@ export function NewHouseForm({ lat, lng, zones, onCreate, onCancel }: Props) {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!address.trim() || !zoneId) return;
-    onCreate(address.trim(), Number(zoneId));
+    if (!address.trim()) return;
+    onCreate(address.trim(), zoneId ? Number(zoneId) : null);
   };
 
   return (
@@ -75,10 +75,8 @@ export function NewHouseForm({ lat, lng, zones, onCreate, onCancel }: Props) {
           required
         />
         {looking && <p className="hint">Looking up address from OpenStreetMap...</p>}
-        <select value={zoneId} onChange={(e) => setZoneId(e.target.value)} required>
-          <option value="" disabled>
-            Choose a zone...
-          </option>
+        <select value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
+          <option value="">No zone (optional)</option>
           {zones.map((z) => (
             <option key={z.id} value={z.id}>
               Zone {z.number} {z.name ? `(${z.name})` : ""}

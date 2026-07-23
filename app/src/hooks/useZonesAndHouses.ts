@@ -21,5 +21,19 @@ export function useZonesAndHouses() {
     refresh();
   }, []);
 
-  return { zones, houses, loading, refresh };
+  const removeHouseLocally = (houseId: number) => {
+    setHouses((prev) => prev.filter((h) => h.id !== houseId));
+  };
+
+  const upsertHouseLocally = (house: House) => {
+    setHouses((prev) => {
+      const idx = prev.findIndex((h) => h.id === house.id);
+      if (idx === -1) return [...prev, house];
+      const next = [...prev];
+      next[idx] = house;
+      return next;
+    });
+  };
+
+  return { zones, houses, loading, refresh, removeHouseLocally, upsertHouseLocally };
 }

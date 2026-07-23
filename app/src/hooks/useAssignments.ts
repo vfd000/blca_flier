@@ -26,15 +26,21 @@ export function useAssignments(campaignId: string | null) {
   return { assignments, loading, refresh };
 }
 
-/** Houses a volunteer can edit: directly assigned, or assigned via their zone. */
+/** Houses a volunteer can edit: house belongs to a route assigned to them for this campaign. */
 export function canEditHouse(
   assignments: Assignment[],
+  routeIdsByHouse: Map<number, Set<number>>,
   volunteerId: string | undefined,
-  houseId: number,
-  zoneId: number
+  houseId: number
 ): boolean {
   if (!volunteerId) return false;
-  return assignments.some(
-    (a) => a.volunteer_id === volunteerId && (a.house_id === houseId || a.zone_id === zoneId)
+  const myRouteIds = new Set(
+    assignments.filter((a) => a.volunteer_id === volunteerId).map((a) => a.route_id)
   );
+  const houseRouteIds = routeIdsByHouse.get(houseId);
+  if (!houseRouteIds) return false;
+  for (const routeId of houseRouteIds) {
+    if (myRouteIds.has(routeId)) return true;
+  }
+  return false;
 }

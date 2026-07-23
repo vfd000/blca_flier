@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L, { type LatLngTuple } from "leaflet";
 import { STATUS_COLORS, type DeliveryStatusValue, type House } from "../lib/types";
@@ -19,14 +19,20 @@ function houseIcon(color: string, selected: boolean, deleteMode: boolean) {
   });
 }
 
+/**
+ * Fit the camera to all houses exactly once, the first time positions become
+ * available. Deliberately does NOT refit on every add/delete afterward --
+ * that would yank an admin's zoomed-in view back out every time they fix a
+ * single pin, which reads as "the map just reset."
+ */
 function FitBounds({ positions }: { positions: LatLngTuple[] }) {
   const map = useMap();
+  const didFit = useRef(false);
   useEffect(() => {
-    if (positions.length === 0) return;
+    if (didFit.current || positions.length === 0) return;
     map.fitBounds(positions, { padding: [24, 24], maxZoom: 17 });
-    // Only refit when the number of plotted houses changes, not on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions.length]);
+    didFit.current = true;
+  }, [positions, map]);
   return null;
 }
 

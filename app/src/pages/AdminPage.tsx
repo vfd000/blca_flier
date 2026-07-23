@@ -2,12 +2,14 @@ import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useZonesAndHouses } from "../hooks/useZonesAndHouses";
 import { useAssignments } from "../hooks/useAssignments";
+import { useRoutes } from "../hooks/useRoutes";
 import { useCampaigns } from "../hooks/useCampaigns";
 import type { Invitation, Profile, Role } from "../lib/types";
 
 export function AdminPage({ campaignId }: { campaignId: string | null }) {
   return (
     <div className="admin-page">
+      <RoutesSection />
       <AssignmentsSection campaignId={campaignId} />
       <InvitationsSection />
       <CampaignsSection />
@@ -15,12 +17,67 @@ export function AdminPage({ campaignId }: { campaignId: string | null }) {
   );
 }
 
+function RoutesSection() {
+  const { houses } = useZonesAndHouses();
+  const { routes, houseIdsByRoute, refresh } = useRoutes();
+  const [number, setNumber] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCreate = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!number) return;
+    const { error: insertError } = await supabase.from("routes").insert({ number: Number(number), name: name || null });
+    if (insertError) setError(insertError.message);
+    else {
+      setNumber("");
+      setName("");
+      refresh();
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    await supabase.from("routes").delete().eq("id", id);
+    refresh();
+  };
+
+  return (
+    <section className="admin-section">
+      <h3>Routes</h3>
+      <p className="hint">
+        Routes are durable delivery groups (draw them on the map's "Select &amp; assign" tool). They
+        persist across campaigns -- assign a volunteer to a route below, campaign by campaign.
+      </p>
+      <form className="admin-form" onSubmit={handleCreate}>
+        <input type="number" placeholder="Route #" value={number} onChange={(e) => setNumber(e.target.value)} required />
+        <input placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="btn btn-primary" type="submit">
+          Create route
+        </button>
+      </form>
+      {error && <p className="error">{error}</p>}
+      <ul className="admin-list">
+        {routes.map((r) => (
+          <li key={r.id}>
+            Route {r.number} {r.name ? `(${r.name})` : ""} -- {houseIdsByRoute.get(r.id)?.size ?? 0} house
+            {(houseIdsByRoute.get(r.id)?.size ?? 0) === 1 ? "" : "s"}
+            <button className="btn btn-link" onClick={() => handleDelete(r.id)}>
+              delete
+            </button>
+          </li>
+        ))}
+        {routes.length === 0 && houses.length > 0 && <li className="hint">No routes yet.</li>}
+      </ul>
+    </section>
+  );
+}
+
 function AssignmentsSection({ campaignId }: { campaignId: string | null }) {
-  const { zones, houses } = useZonesAndHouses();
+  const { routes } = useRoutes();
   const { assignments, refresh } = useAssignments(campaignId);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [targetType, setTargetType] = useState<"zone" | "house">("zone");
-  const [targetId, setTargetId] = useState<string>("");
+  const [routeId, setRouteId] = useState<string>("");
   const [volunteerId, setVolunteerId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
@@ -35,14 +92,14 @@ function AssignmentsSection({ campaignId }: { campaignId: string | null }) {
   const handleAssign = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!campaignId || !targetId || !volunteerId) return;
-    const { error: insertError } = await supabase.from("assignments").insert({
-      campaign_id: campaignId,
-      zone_id: targetType === "zone" ? Number(targetId) : null,
-      house_id: targetType === "house" ? Number(targetId) : null,
-      volunteer_id: volunteerId,
-    });
-    if (insertError) setError(insertError.message);
+    if (!campaignId || !routeId || !volunteerId) return;
+    const { error: upsertError } = await supabase
+      .from("assignments")
+      .upsert(
+        { campaign_id: campaignId, route_id: Number(routeId), volunteer_id: volunteerId },
+        { onConflict: "campaign_id,route_id" }
+      );
+    if (upsertError) setError(upsertError.message);
     else refresh();
   };
 
@@ -52,8 +109,7 @@ function AssignmentsSection({ campaignId }: { campaignId: string | null }) {
   };
 
   const profileById = new Map(profiles.map((p) => [p.id, p]));
-  const zoneById = new Map(zones.map((z) => [z.id, z]));
-  const houseById = new Map(houses.map((h) => [h.id, h]));
+  const routeById = new Map(routes.map((r) => [r.id, r]));
 
   return (
     <section className="admin-section">
@@ -61,26 +117,17 @@ function AssignmentsSection({ campaignId }: { campaignId: string | null }) {
       {!campaignId && <p className="hint">Pick a campaign above first.</p>}
       {campaignId && (
         <>
+          {routes.length === 0 && <p className="hint">No routes yet -- create one above first.</p>}
           <form className="admin-form" onSubmit={handleAssign}>
-            <select value={targetType} onChange={(e) => setTargetType(e.target.value as "zone" | "house")}>
-              <option value="zone">Whole zone</option>
-              <option value="house">Single house</option>
-            </select>
-            <select value={targetId} onChange={(e) => setTargetId(e.target.value)} required>
+            <select value={routeId} onChange={(e) => setRouteId(e.target.value)} required>
               <option value="" disabled>
-                {targetType === "zone" ? "Choose a zone..." : "Choose a house..."}
+                Choose a route...
               </option>
-              {targetType === "zone"
-                ? zones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      Zone {z.number} {z.name ? `(${z.name})` : ""}
-                    </option>
-                  ))
-                : houses.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.address}
-                    </option>
-                  ))}
+              {routes.map((r) => (
+                <option key={r.id} value={r.id}>
+                  Route {r.number} {r.name ? `(${r.name})` : ""}
+                </option>
+              ))}
             </select>
             <select value={volunteerId} onChange={(e) => setVolunteerId(e.target.value)} required>
               <option value="" disabled>
@@ -98,18 +145,19 @@ function AssignmentsSection({ campaignId }: { campaignId: string | null }) {
           </form>
           {error && <p className="error">{error}</p>}
           <ul className="admin-list">
-            {assignments.map((a) => (
-              <li key={a.id}>
-                {a.zone_id != null
-                  ? `Zone ${zoneById.get(a.zone_id)?.number ?? a.zone_id}`
-                  : houseById.get(a.house_id ?? -1)?.address ?? "house"}
-                {" -> "}
-                {profileById.get(a.volunteer_id)?.display_name ?? profileById.get(a.volunteer_id)?.email ?? a.volunteer_id}
-                <button className="btn btn-link" onClick={() => handleRemove(a.id)}>
-                  remove
-                </button>
-              </li>
-            ))}
+            {assignments.map((a) => {
+              const route = routeById.get(a.route_id);
+              return (
+                <li key={a.id}>
+                  Route {route?.number ?? a.route_id} {route?.name ? `(${route.name})` : ""}
+                  {" -> "}
+                  {profileById.get(a.volunteer_id)?.display_name ?? profileById.get(a.volunteer_id)?.email ?? a.volunteer_id}
+                  <button className="btn btn-link" onClick={() => handleRemove(a.id)}>
+                    remove
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

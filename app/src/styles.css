@@ -286,3 +286,63 @@ body {
   list-style: none;
   padding: 0;
 }
+
+.house-div-icon {
+  background: transparent;
+  border: none;
+}
+
+.map-mode-add .leaflet-container,
+.map-mode-select .leaflet-container {
+  cursor: crosshair;
+}
+
+.map-mode-reposition .leaflet-container {
+  cursor: default;
+}
+
+.map-toolbar {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.map-toolbar-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.map-toolbar-btn {
+  text-align: left;
+}
+
+.map-toolbar-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.map-toolbar-hint {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.new-house-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.new-house-form input,
+.new-house-form select {
+  padding: 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+.bulk-assign-panel .admin-form {
+  flex-direction: column;
+  align-items: stretch;
+}

@@ -15,7 +15,11 @@ function houseIcon(color: string, selected: boolean, deleteMode: boolean) {
     className: "house-div-icon",
     html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:${ringWidth}px solid ${ring};"></div>`,
     iconSize: [14, 14],
-    iconAnchor: [7, 7],
+    // Anchor above center (not [7, 7]) so the dot renders a few pixels below
+    // the actual geocoded point instead of sitting directly on top of the
+    // house-number label printed on the OSM tile. Purely visual -- the real
+    // lat/lng used for box-select etc. is untouched.
+    iconAnchor: [7, 2],
   });
 }
 

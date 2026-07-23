@@ -19,7 +19,7 @@ function houseIcon(color: string, selected: boolean, deleteMode: boolean) {
     // the actual geocoded point instead of sitting directly on top of the
     // house-number label printed on the OSM tile. Purely visual -- the real
     // lat/lng used for box-select etc. is untouched.
-    iconAnchor: [7, 2],
+    iconAnchor: [7, -8],
   });
 }
 

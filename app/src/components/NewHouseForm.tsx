@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { Zone } from "../lib/types";
 
 interface Props {
@@ -9,9 +9,47 @@ interface Props {
   onCancel: () => void;
 }
 
+interface NominatimAddress {
+  house_number?: string;
+  road?: string;
+  city?: string;
+  town?: string;
+  state?: string;
+  postcode?: string;
+}
+
+async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18`
+    );
+    if (!res.ok) return null;
+    const data: { address?: NominatimAddress } = await res.json();
+    const a = data.address;
+    if (!a?.road) return null;
+    return [a.house_number, a.road].filter(Boolean).join(" ");
+  } catch {
+    return null;
+  }
+}
+
 export function NewHouseForm({ lat, lng, zones, onCreate, onCancel }: Props) {
   const [address, setAddress] = useState("");
   const [zoneId, setZoneId] = useState<string>("");
+  const [looking, setLooking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLooking(true);
+    reverseGeocode(lat, lng).then((result) => {
+      if (cancelled) return;
+      if (result) setAddress(result);
+      setLooking(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lat, lng]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -30,12 +68,13 @@ export function NewHouseForm({ lat, lng, zones, onCreate, onCancel }: Props) {
       </p>
       <form onSubmit={handleSubmit}>
         <input
-          placeholder="Address (e.g. 18525 126th Pl SE)"
+          placeholder={looking ? "Looking up address..." : "Address (e.g. 18525 126th Pl SE)"}
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           autoFocus
           required
         />
+        {looking && <p className="hint">Looking up address from OpenStreetMap...</p>}
         <select value={zoneId} onChange={(e) => setZoneId(e.target.value)} required>
           <option value="" disabled>
             Choose a zone...

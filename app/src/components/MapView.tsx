@@ -6,10 +6,10 @@ import { HousePanel } from "./HousePanel";
 
 const RENTON_WA: LatLngTuple = [47.4829, -122.2171];
 
-export type MapEditMode = "view" | "reposition" | "add" | "select";
+export type MapEditMode = "view" | "reposition" | "add" | "select" | "delete";
 
-function houseIcon(color: string, selected: boolean) {
-  const ring = selected ? "#2563eb" : "#1f2937";
+function houseIcon(color: string, selected: boolean, deleteMode: boolean) {
+  const ring = selected ? "#2563eb" : deleteMode ? "#b91c1c" : "#1f2937";
   const ringWidth = selected ? 3 : 1.5;
   return L.divIcon({
     className: "house-div-icon",
@@ -112,6 +112,7 @@ interface Props {
   selectedHouseIds: Set<number>;
   onSelectHouses: (ids: Set<number>) => void;
   onToggleHouseSelection: (houseId: number) => void;
+  onDeleteHouse: (houseId: number) => void;
 }
 
 export function MapView({
@@ -127,6 +128,7 @@ export function MapView({
   selectedHouseIds,
   onSelectHouses,
   onToggleHouseSelection,
+  onDeleteHouse,
 }: Props) {
   const [openHouseId, setOpenHouseId] = useState<number | null>(null);
 
@@ -157,7 +159,7 @@ export function MapView({
             <Marker
               key={house.id}
               position={[house.lat as number, house.lng as number]}
-              icon={houseIcon(STATUS_COLORS[status], selected)}
+              icon={houseIcon(STATUS_COLORS[status], selected, editMode === "delete")}
               draggable={draggable}
               eventHandlers={{
                 dragend: (e) => {
@@ -165,7 +167,8 @@ export function MapView({
                   onPlaceHouse(house.id, lat, lng);
                 },
                 click: () => {
-                  if (editMode === "select") onToggleHouseSelection(house.id);
+                  if (editMode === "delete") onDeleteHouse(house.id);
+                  else if (editMode === "select") onToggleHouseSelection(house.id);
                   else if (editMode === "view") setOpenHouseId(house.id);
                 },
               }}

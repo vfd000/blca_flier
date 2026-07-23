@@ -5,6 +5,7 @@ const MODES: { id: MapEditMode; label: string; hint: string }[] = [
   { id: "reposition", label: "Move houses", hint: "Drag any pin to fix its location" },
   { id: "add", label: "Add house", hint: "Click the map where a missing house belongs" },
   { id: "select", label: "Select & assign", hint: "Drag a box around houses to assign them as a route" },
+  { id: "delete", label: "Delete house", hint: "Click a house to permanently remove it" },
 ];
 
 interface Props {

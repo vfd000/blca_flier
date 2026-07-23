@@ -51,6 +51,14 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
     refreshHouses();
   };
 
+  const handleDeleteHouse = async (houseId: number) => {
+    const house = houses.find((h) => h.id === houseId);
+    if (!house) return;
+    if (!window.confirm(`Delete "${house.address}"? This also removes its status/assignment history.`)) return;
+    await supabase.from("houses").delete().eq("id", houseId);
+    refreshHouses();
+  };
+
   const handleBulkAssign = async (volunteerId: string) => {
     if (!campaignId || selectedHouseIds.size === 0) return;
     const rows = Array.from(selectedHouseIds).map((houseId) => ({
@@ -96,6 +104,7 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
         selectedHouseIds={selectedHouseIds}
         onSelectHouses={setSelectedHouseIds}
         onToggleHouseSelection={handleToggleHouseSelection}
+        onDeleteHouse={handleDeleteHouse}
       />
       {isAdmin && pendingNewHouse && (
         <NewHouseForm

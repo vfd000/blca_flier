@@ -20,9 +20,12 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
   const [editMode, setEditMode] = useState<MapEditMode>("view");
   const [placingHouseId, setPlacingHouseId] = useState<number | null>(null);
   const [pendingNewHouse, setPendingNewHouse] = useState<{ lat: number; lng: number } | null>(null);
+  const [pendingDeleteHouseId, setPendingDeleteHouseId] = useState<number | null>(null);
   const [selectedHouseIds, setSelectedHouseIds] = useState<Set<number>>(new Set());
+  const [mapError, setMapError] = useState<string | null>(null);
 
   const unplaced = houses.filter((h) => h.lat == null || h.lng == null);
+  const pendingDeleteHouse = houses.find((h) => h.id === pendingDeleteHouseId) ?? null;
 
   const handleSetStatus = (houseId: number, status: DeliveryStatusValue) => {
     if (!session) return;
@@ -31,8 +34,8 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
 
   const handlePlaceHouse = async (houseId: number, lat: number, lng: number) => {
     const { error, data } = await supabase.from("houses").update({ lat, lng }).eq("id", houseId).select();
-    if (error) return alert(`Couldn't move house: ${error.message}`);
-    if (!data || data.length === 0) return alert("Move didn't take effect (no matching row) - check you're signed in as admin.");
+    if (error) return setMapError(`Couldn't move house: ${error.message}`);
+    if (!data || data.length === 0) return setMapError("Move didn't take effect (no matching row) - check you're signed in as admin.");
     setPlacingHouseId(null);
     refreshHouses();
   };
@@ -49,18 +52,21 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
       lat: pendingNewHouse.lat,
       lng: pendingNewHouse.lng,
     });
-    if (error) return alert(`Couldn't create house: ${error.message}`);
+    if (error) return setMapError(`Couldn't create house: ${error.message}`);
     setPendingNewHouse(null);
     refreshHouses();
   };
 
-  const handleDeleteHouse = async (houseId: number) => {
-    const house = houses.find((h) => h.id === houseId);
-    if (!house) return;
-    if (!window.confirm(`Delete "${house.address}"? This also removes its status/assignment history.`)) return;
-    const { error, data } = await supabase.from("houses").delete().eq("id", houseId).select();
-    if (error) return alert(`Couldn't delete house: ${error.message}`);
-    if (!data || data.length === 0) return alert("Delete didn't affect any rows - check you're signed in as admin.");
+  const handleDeleteHouse = (houseId: number) => {
+    setPendingDeleteHouseId(houseId);
+  };
+
+  const confirmDeleteHouse = async () => {
+    if (pendingDeleteHouseId == null) return;
+    const { error, data } = await supabase.from("houses").delete().eq("id", pendingDeleteHouseId).select();
+    setPendingDeleteHouseId(null);
+    if (error) return setMapError(`Couldn't delete house: ${error.message}`);
+    if (!data || data.length === 0) return setMapError("Delete didn't affect any rows - check you're signed in as admin.");
     refreshHouses();
   };
 
@@ -72,7 +78,7 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
       volunteer_id: volunteerId,
     }));
     const { error } = await supabase.from("assignments").insert(rows);
-    if (error) return alert(`Couldn't assign houses: ${error.message}`);
+    if (error) return setMapError(`Couldn't assign houses: ${error.message}`);
     setSelectedHouseIds(new Set());
     refreshAssignments();
   };
@@ -81,6 +87,7 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
     setEditMode(mode);
     setPlacingHouseId(null);
     setPendingNewHouse(null);
+    setPendingDeleteHouseId(null);
     setSelectedHouseIds(new Set());
   };
 
@@ -95,6 +102,14 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
 
   return (
     <div className="map-page">
+      {mapError && (
+        <div className="map-error-banner">
+          {mapError}
+          <button className="btn" onClick={() => setMapError(null)}>
+            &times;
+          </button>
+        </div>
+      )}
       <MapView
         houses={houses}
         statusByHouse={statusByHouse}
@@ -120,6 +135,24 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
           onCreate={handleCreateHouse}
           onCancel={() => setPendingNewHouse(null)}
         />
+      )}
+      {isAdmin && pendingDeleteHouse && (
+        <div className="house-panel">
+          <button className="house-panel-close" onClick={() => setPendingDeleteHouseId(null)} aria-label="Close">
+            &times;
+          </button>
+          <h3>Delete house?</h3>
+          <p>{pendingDeleteHouse.address}</p>
+          <p className="hint">This also removes its status/assignment history. Cannot be undone.</p>
+          <div className="house-panel-actions">
+            <button className="btn btn-danger" onClick={confirmDeleteHouse}>
+              Delete
+            </button>
+            <button className="btn" onClick={() => setPendingDeleteHouseId(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
       {isAdmin && editMode === "select" && (
         <BulkAssignPanel

@@ -80,6 +80,7 @@ body {
 .map-page {
   display: flex;
   height: 100%;
+  position: relative;
 }
 
 .map-wrap {
@@ -345,4 +346,27 @@ body {
 .bulk-assign-panel .admin-form {
   flex-direction: column;
   align-items: stretch;
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+.map-error-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1100;
+  background: #fee2e2;
+  color: #991b1b;
+  border-bottom: 1px solid #fca5a5;
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.9rem;
 }

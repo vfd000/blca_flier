@@ -76,3 +76,13 @@ then click its spot on the map).
 map image, not verified address-by-address, so a handful of corner-lot houses may end up with the
 wrong street and fail to geocode or land in the wrong place. That's expected — see PLAN.md open
 item 7.
+
+## Backing up the database
+
+```sh
+PGPASSWORD='...' supabase/backup.sh   # password is in the "supabase blca-flier" 1Password item
+```
+
+Dumps the live project's schema + data to a timestamped `.sql` file in `~/backups/blca_flier/`
+(or pass a different output directory as the first argument). Requires `podman` or `docker` (used
+to run a version-matched `pg_dump`, since the client version has to match the server's).

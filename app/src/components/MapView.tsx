@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L, { type LatLngTuple } from "leaflet";
-import { STATUS_COLORS, type DeliveryStatusValue, type House, type Zone } from "../lib/types";
+import { STATUS_COLORS, type Assignment, type DeliveryStatusValue, type House, type Profile, type Zone } from "../lib/types";
 import { zoneColor } from "../lib/colors";
 import { HousePanel } from "./HousePanel";
 
@@ -138,6 +138,11 @@ interface Props {
   canEditHouse: (house: House) => boolean;
   onSetStatus: (houseId: number, status: DeliveryStatusValue) => void;
   isAdmin: boolean;
+  campaignId: string | null;
+  assignments: Assignment[];
+  profiles: Profile[];
+  onChangeHouseZone: (houseId: number, zoneId: number | null) => void;
+  onAssignHouseVolunteer: (houseId: number, volunteerId: string | null) => void;
   editMode: MapEditMode;
   placingHouseId: number | null;
   onPlaceHouse: (houseId: number, lat: number, lng: number) => void;
@@ -156,6 +161,11 @@ export function MapView({
   canEditHouse,
   onSetStatus,
   isAdmin,
+  campaignId,
+  assignments,
+  profiles,
+  onChangeHouseZone,
+  onAssignHouseVolunteer,
   editMode,
   placingHouseId,
   onPlaceHouse,
@@ -173,6 +183,24 @@ export function MapView({
   const openHouse = houses.find((h) => h.id === openHouseId) ?? null;
   const openHouseZone = openHouse ? zones.find((z) => z.id === openHouse.zone_id) ?? null : null;
   const zoneColorById = useMemo(() => new Map(zones.map((z) => [z.id, z.color])), [zones]);
+
+  const volunteerLabel = (id: string) => {
+    const p = profiles.find((pr) => pr.id === id);
+    return p?.display_name ?? p?.email ?? id;
+  };
+  const directAssignment = openHouse
+    ? (() => {
+        const a = assignments.find((x) => x.house_id === openHouse.id);
+        return a ? { volunteerId: a.volunteer_id, label: volunteerLabel(a.volunteer_id) } : null;
+      })()
+    : null;
+  const zoneAssignment =
+    openHouse?.zone_id != null
+      ? (() => {
+          const a = assignments.find((x) => x.zone_id === openHouse.zone_id);
+          return a ? { label: volunteerLabel(a.volunteer_id) } : null;
+        })()
+      : null;
 
   return (
     <div className={`map-wrap map-mode-${editMode}`}>
@@ -231,6 +259,14 @@ export function MapView({
           canEdit={canEditHouse(openHouse)}
           onSetStatus={(status) => onSetStatus(openHouse.id, status)}
           onClose={() => setOpenHouseId(null)}
+          isAdmin={isAdmin}
+          campaignId={campaignId}
+          zones={zones}
+          profiles={profiles}
+          directAssignment={directAssignment}
+          zoneAssignment={zoneAssignment}
+          onChangeZone={(zoneId) => onChangeHouseZone(openHouse.id, zoneId)}
+          onAssignVolunteer={(volunteerId) => onAssignHouseVolunteer(openHouse.id, volunteerId)}
         />
       )}
     </div>

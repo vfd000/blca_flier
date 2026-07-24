@@ -7,6 +7,7 @@ import { useGeolocation } from "../hooks/useGeolocation";
 import { directionsUrl, distanceMeters, formatDistance, nearestNeighborOrder, type LatLng } from "../lib/geo";
 import { STATUS_LABELS, type DeliveryStatusValue, type House } from "../lib/types";
 import { InstallButton } from "../components/InstallButton";
+import { DeliveryMap } from "../components/DeliveryMap";
 
 // Suburban GPS accuracy under tree cover is often 15-30m, so "arrived"
 // needs enough slack to trigger while still standing on the right porch.
@@ -22,12 +23,13 @@ function hasCoords(h: House): h is PlacedHouse {
 
 export function DeliveryModePage({ campaignId }: { campaignId: string | null }) {
   const { session, profile } = useAuth();
-  const { houses } = useZonesAndHouses();
+  const { houses, zones } = useZonesAndHouses();
   const { assignments } = useAssignments(campaignId);
   const { statusByHouse, setStatus } = useDeliveryStatus(campaignId);
   const geo = useGeolocation();
   const [manualTargetId, setManualTargetId] = useState<number | null>(null);
   const [showList, setShowList] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   if (!session || !profile) return <p className="hint">Sign in to use delivery mode.</p>;
   if (!campaignId) return <p className="hint">Pick a campaign above first.</p>;
@@ -104,9 +106,27 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
         </div>
       )}
 
-      <button className="btn delivery-list-toggle" onClick={() => setShowList((v) => !v)}>
-        {showList ? "Hide" : "Show"} remaining houses ({orderedPending.length})
-      </button>
+      <div className="delivery-toggle-row">
+        <button className="btn delivery-list-toggle" onClick={() => setShowMap((v) => !v)}>
+          {showMap ? "Hide" : "Show"} map
+        </button>
+        <button className="btn delivery-list-toggle" onClick={() => setShowList((v) => !v)}>
+          {showList ? "Hide" : "Show"} remaining houses ({orderedPending.length})
+        </button>
+      </div>
+
+      {showMap && (
+        <DeliveryMap
+          houses={myHouses}
+          zones={zones}
+          statusByHouse={statusByHouse}
+          targetId={target?.id ?? null}
+          here={here}
+          onSelectHouse={(id) => {
+            if (pendingHouses.some((h) => h.id === id)) setManualTargetId(id);
+          }}
+        />
+      )}
 
       {showList && (
         <ul className="delivery-list">

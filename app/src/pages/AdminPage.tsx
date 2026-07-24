@@ -204,6 +204,10 @@ function AssignmentsSection({ campaignId }: { campaignId: string | null }) {
   const zoneById = new Map(zones.map((z) => [z.id, z]));
   const houseById = new Map(houses.map((h) => [h.id, h]));
 
+  const volunteerLabel = (id: string) => profileById.get(id)?.display_name ?? profileById.get(id)?.email ?? id;
+  const zoneAssignee = (zoneId: number) => assignments.find((a) => a.zone_id === zoneId);
+  const houseAssignee = (houseId: number) => assignments.find((a) => a.house_id === houseId);
+
   return (
     <section className="admin-section">
       <h3>Assignments</h3>
@@ -220,16 +224,24 @@ function AssignmentsSection({ campaignId }: { campaignId: string | null }) {
                 {targetType === "zone" ? "Choose a zone..." : "Choose a house..."}
               </option>
               {targetType === "zone"
-                ? zones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      Zone {z.number} {z.name ? `(${z.name})` : ""}
-                    </option>
-                  ))
-                : houses.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.address}
-                    </option>
-                  ))}
+                ? zones.map((z) => {
+                    const existing = zoneAssignee(z.id);
+                    return (
+                      <option key={z.id} value={z.id}>
+                        Zone {z.number} {z.name ? `(${z.name})` : ""}
+                        {existing ? ` -- already assigned to ${volunteerLabel(existing.volunteer_id)}` : ""}
+                      </option>
+                    );
+                  })
+                : houses.map((h) => {
+                    const existing = houseAssignee(h.id);
+                    return (
+                      <option key={h.id} value={h.id}>
+                        {h.address}
+                        {existing ? ` -- already assigned to ${volunteerLabel(existing.volunteer_id)}` : ""}
+                      </option>
+                    );
+                  })}
             </select>
             <select value={volunteerId} onChange={(e) => setVolunteerId(e.target.value)} required>
               <option value="" disabled>

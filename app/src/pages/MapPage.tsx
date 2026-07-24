@@ -3,6 +3,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useZonesAndHouses } from "../hooks/useZonesAndHouses";
 import { useDeliveryStatus } from "../hooks/useDeliveryStatus";
 import { useAssignments, canEditHouse } from "../hooks/useAssignments";
+import { useProfiles } from "../hooks/useProfiles";
 import { MapView, type MapEditMode } from "../components/MapView";
 import { MapToolbar } from "../components/MapToolbar";
 import { NewHouseForm } from "../components/NewHouseForm";
@@ -22,7 +23,8 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
   const { session, profile, isAdmin } = useAuth();
   const { zones, houses, removeHouseLocally, upsertHouseLocally } = useZonesAndHouses();
   const { statusByHouse, setStatus } = useDeliveryStatus(campaignId);
-  const { assignments } = useAssignments(campaignId);
+  const { assignments, refresh: refreshAssignments } = useAssignments(campaignId);
+  const { profiles } = useProfiles();
 
   const [editMode, setEditMode] = useState<MapEditMode>("view");
   const [placingHouseId, setPlacingHouseId] = useState<number | null>(null);
@@ -117,6 +119,35 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
     showSuccess(`Deleted ${houseBeforeDelete?.address ?? "house"}.`);
   };
 
+  const handleChangeHouseZone = async (houseId: number, zoneId: number | null) => {
+    const { error, data } = await supabase.from("houses").update({ zone_id: zoneId }).eq("id", houseId).select().maybeSingle();
+    if (error) return showError(`Couldn't change zone: ${error.message}`);
+    if (!data) return showError("Change didn't take effect - check you're signed in as admin.");
+    upsertHouseLocally(data);
+    showSuccess(`Moved ${data.address} to ${zoneId ? "a new zone" : "no zone"}.`);
+  };
+
+  const handleAssignHouseVolunteer = async (houseId: number, volunteerId: string | null) => {
+    if (!campaignId) return;
+    // Replace rather than upsert: a house can have at most one direct
+    // (non-zone) assignment per campaign, and older admin actions could
+    // have left more than one row here, so clear all of them first.
+    const { error: deleteError } = await supabase
+      .from("assignments")
+      .delete()
+      .eq("campaign_id", campaignId)
+      .eq("house_id", houseId);
+    if (deleteError) return showError(`Couldn't update assignment: ${deleteError.message}`);
+    if (volunteerId) {
+      const { error: insertError } = await supabase
+        .from("assignments")
+        .insert({ campaign_id: campaignId, house_id: houseId, volunteer_id: volunteerId });
+      if (insertError) return showError(`Couldn't assign volunteer: ${insertError.message}`);
+    }
+    refreshAssignments();
+    showSuccess(volunteerId ? "Volunteer assigned for this campaign." : "Volunteer unassigned for this campaign.");
+  };
+
   const handleAddToZone = async (zoneId: number) => {
     if (selectedHouseIds.size === 0) return showError("No houses selected.");
     const ids = Array.from(selectedHouseIds);
@@ -182,6 +213,11 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
         }
         onSetStatus={handleSetStatus}
         isAdmin={isAdmin}
+        campaignId={campaignId}
+        assignments={assignments}
+        profiles={profiles}
+        onChangeHouseZone={handleChangeHouseZone}
+        onAssignHouseVolunteer={handleAssignHouseVolunteer}
         editMode={editMode}
         placingHouseId={placingHouseId}
         onPlaceHouse={handlePlaceHouse}

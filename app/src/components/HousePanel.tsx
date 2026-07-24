@@ -1,6 +1,15 @@
-import { STATUS_LABELS, type DeliveryStatusValue, type House, type Zone } from "../lib/types";
+import { STATUS_LABELS, type DeliveryStatusValue, type House, type Profile, type Zone } from "../lib/types";
 
 const ORDER: DeliveryStatusValue[] = ["not_started", "no_answer", "delivered", "skipped"];
+
+interface DirectAssignment {
+  volunteerId: string;
+  label: string;
+}
+
+interface ZoneAssignmentInfo {
+  label: string;
+}
 
 interface Props {
   house: House;
@@ -9,9 +18,32 @@ interface Props {
   canEdit: boolean;
   onSetStatus: (status: DeliveryStatusValue) => void;
   onClose: () => void;
+  isAdmin: boolean;
+  campaignId: string | null;
+  zones: Zone[];
+  profiles: Profile[];
+  directAssignment: DirectAssignment | null;
+  zoneAssignment: ZoneAssignmentInfo | null;
+  onChangeZone: (zoneId: number | null) => void;
+  onAssignVolunteer: (volunteerId: string | null) => void;
 }
 
-export function HousePanel({ house, zone, status, canEdit, onSetStatus, onClose }: Props) {
+export function HousePanel({
+  house,
+  zone,
+  status,
+  canEdit,
+  onSetStatus,
+  onClose,
+  isAdmin,
+  campaignId,
+  zones,
+  profiles,
+  directAssignment,
+  zoneAssignment,
+  onChangeZone,
+  onAssignVolunteer,
+}: Props) {
   return (
     <div className="house-panel">
       <button className="house-panel-close" onClick={onClose} aria-label="Close">
@@ -41,6 +73,49 @@ export function HousePanel({ house, zone, status, canEdit, onSetStatus, onClose 
         <p className="house-panel-readonly">
           {house.notes ? house.notes : "Sign in as the assigned volunteer to update this house."}
         </p>
+      )}
+      {isAdmin && (
+        <div className="house-panel-admin">
+          <label className="house-panel-field">
+            Zone
+            <select
+              value={house.zone_id ?? ""}
+              onChange={(e) => onChangeZone(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">None</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  Zone {z.number} {z.name ? `(${z.name})` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint">Zones are shared across all campaigns.</p>
+
+          {campaignId ? (
+            <>
+              <label className="house-panel-field">
+                Assigned volunteer (this campaign)
+                <select
+                  value={directAssignment?.volunteerId ?? ""}
+                  onChange={(e) => onAssignVolunteer(e.target.value || null)}
+                >
+                  <option value="">Unassigned</option>
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.display_name ?? p.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {zoneAssignment && (
+                <p className="hint">Also covered via its zone, assigned to {zoneAssignment.label} for this campaign.</p>
+              )}
+            </>
+          ) : (
+            <p className="hint">Pick a campaign above to assign a volunteer to this house.</p>
+          )}
+        </div>
       )}
     </div>
   );

@@ -5,7 +5,13 @@ const MODES: { id: MapEditMode; label: string; hint: string }[] = [
   { id: "reposition", label: "Move houses", hint: "Drag any pin to fix its location" },
   { id: "add", label: "Add house", hint: "Click the map where a missing house belongs" },
   { id: "bulkAdd", label: "Add multiple", hint: "Click repeatedly to drop several houses in a row - no confirm popup" },
-  { id: "select", label: "Select & assign", hint: "Drag a box around houses to assign them to a zone" },
+  {
+    id: "select",
+    label: "Select & zone",
+    hint:
+      "Drag a box around houses to group them into a zone. Zones are shared across all campaigns -- " +
+      "to assign a volunteer for just this campaign, use the House view (click a house) or Admin > Assignments.",
+  },
   { id: "delete", label: "Delete house", hint: "Click a house to permanently remove it" },
 ];
 

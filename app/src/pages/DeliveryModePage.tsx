@@ -5,7 +5,7 @@ import { useDeliveryStatus } from "../hooks/useDeliveryStatus";
 import { useAssignments } from "../hooks/useAssignments";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { directionsUrl, distanceMeters, formatDistance, nearestNeighborOrder, type LatLng } from "../lib/geo";
-import { STATUS_LABELS, type DeliveryStatusValue, type House } from "../lib/types";
+import { PENDING_STATUSES, STATUS_LABELS, type DeliveryStatusValue, type House } from "../lib/types";
 import { InstallButton } from "../components/InstallButton";
 import { DeliveryMap } from "../components/DeliveryMap";
 import { NotesEditor } from "../components/NotesEditor";
@@ -13,7 +13,6 @@ import { NotesEditor } from "../components/NotesEditor";
 // Suburban GPS accuracy under tree cover is often 15-30m, so "arrived"
 // needs enough slack to trigger while still standing on the right porch.
 const ARRIVAL_RADIUS_M = 40;
-const PENDING_STATUSES: DeliveryStatusValue[] = ["not_started", "no_answer"];
 const ACTION_ORDER: DeliveryStatusValue[] = ["delivered", "no_answer", "skipped"];
 
 type PlacedHouse = House & LatLng;

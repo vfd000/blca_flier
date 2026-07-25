@@ -6,7 +6,7 @@ import { useDeliveryStatus } from "../hooks/useDeliveryStatus";
 import { useAssignments } from "../hooks/useAssignments";
 import { useProfiles } from "../hooks/useProfiles";
 import { supabase } from "../lib/supabaseClient";
-import { STATUS_LABELS, type DeliveryStatusValue } from "../lib/types";
+import { PENDING_STATUSES, STATUS_LABELS, type DeliveryStatusValue } from "../lib/types";
 
 const ORDER: DeliveryStatusValue[] = ["not_started", "no_answer", "delivered", "skipped"];
 
@@ -35,6 +35,11 @@ export function MyHousesPage({ campaignId }: { campaignId: string | null }) {
   const myZoneIds = new Set(myClaims.filter((a) => a.zone_id != null).map((a) => a.zone_id));
   const myHouseIds = new Set(myClaims.filter((a) => a.house_id != null).map((a) => a.house_id));
   const myHouses = houses.filter((h) => myHouseIds.has(h.id) || (h.zone_id != null && myZoneIds.has(h.zone_id)));
+  const remainingCount = myHouses.filter((h) =>
+    PENDING_STATUSES.includes(statusByHouse.get(h.id) ?? "not_started")
+  ).length;
+  const doneCount = myHouses.length - remainingCount;
+  const progressPct = myHouses.length === 0 ? 0 : Math.round((doneCount / myHouses.length) * 100);
 
   const handleClaim = async (e: FormEvent) => {
     e.preventDefault();
@@ -119,6 +124,15 @@ export function MyHousesPage({ campaignId }: { campaignId: string | null }) {
         <p className="hint">Nothing claimed yet -- use the picker above.</p>
       ) : (
         <>
+          <div className="delivery-progress">
+            <div className="delivery-progress-bar">
+              <div className="delivery-progress-fill" style={{ width: `${progressPct}%` }} />
+            </div>
+            <div className="delivery-progress-label">
+              {remainingCount} remaining, {doneCount} done
+            </div>
+          </div>
+
           <Link to="/deliver" className="btn btn-primary my-houses-deliver-link">
             Start delivery mode →
           </Link>

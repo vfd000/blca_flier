@@ -1,0 +1,52 @@
+name: Backup database
+
+# Nightly dump of the live database, GPG-encrypted before upload. This repo
+# is public, so an unencrypted dump would leak volunteer emails/notes to
+# anyone who can view the repo -- the artifact itself is downloadable by
+# anyone, but useless without BACKUP_ENCRYPTION_PASSPHRASE (a repo secret,
+# same treat-it-like-a-password rule as SUPABASE_DB_PASSWORD). Losing that
+# passphrase means losing the ability to restore these backups, so store it
+# in the same place as the DB password (1Password item "supabase blca-flier").
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # 1am/2am Pacific depending on DST -- low-traffic hours
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump database
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          pg_dump "host=aws-1-us-west-2.pooler.supabase.com port=6543 dbname=postgres user=postgres.jolliqchwhzghwjeoocq sslmode=require" \
+            --no-owner --no-privileges --schema=public \
+            -f backup.sql
+
+      - name: Encrypt backup
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          gpg --batch --yes --passphrase "$PASSPHRASE" --symmetric --cipher-algo AES256 -o backup.sql.gpg backup.sql
+          rm backup.sql
+
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backup.sql.gpg
+          retention-days: 90

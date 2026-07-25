@@ -14,6 +14,10 @@ See [PLAN.md](./PLAN.md) for the architecture, data model, and milestones.
   `geocode.py` turns it into `seed.sql` by geocoding each address via Nominatim.
 - `app/` — Vite + React + TypeScript frontend.
 - `.github/workflows/deploy.yml` — builds `app/` and deploys it to GitHub Pages on push to `main`.
+- `.github/workflows/db-migrate.yml` — applies new migrations to the live database on push to
+  `main` (only when `supabase/migrations/**` changed), or on demand.
+- `.github/workflows/db-backup.yml` — nightly encrypted database backup, uploaded as a build
+  artifact.
 
 ## Delivery mode
 
@@ -33,14 +37,45 @@ with spotty cell service mid-route.
 ## Setting up a Supabase project (once, by a maintainer)
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. In the SQL editor (or via `supabase db push` with the CLI), run the migrations in
-   `supabase/migrations/` in order, then `supabase/seed/seed.sql`.
+2. In the SQL editor, run the migrations in `supabase/migrations/` in order, then
+   `supabase/seed/seed.sql`.
 3. Under Authentication → Providers, enable Google and add your OAuth client ID/secret
    (create one in the Google Cloud Console; no Workspace domain restriction needed).
 4. Copy the project URL and anon key into `app/.env.local` (see `app/.env.example`) for local
-   dev, and into the repo's GitHub Actions secrets (`VITE_SUPABASE_URL`,
-   `VITE_SUPABASE_ANON_KEY`) for deploys.
+   dev, and add these repo secrets (Settings → Secrets and variables → Actions) for deploys and
+   the database automation below:
+   - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — used by `deploy.yml`.
+   - `SUPABASE_DB_PASSWORD` — the project's Postgres password (Project Settings → Database),
+     used by `db-migrate.yml` and `db-backup.yml` to connect directly. Treat it like any other
+     production database password.
+   - `BACKUP_ENCRYPTION_PASSPHRASE` — a long random passphrase you generate yourself (e.g.
+     `openssl rand -base64 32`), used by `db-backup.yml` to encrypt backups before upload. Store
+     it somewhere durable (the repo is public, so backups are GPG-encrypted before they're
+     uploaded as a build artifact — anyone can download the artifact, but it's useless without
+     this passphrase). **If you lose it, existing backups become unrecoverable.**
 5. In GitHub repo Settings → Pages, set the source to "GitHub Actions".
+6. Bootstrap migration tracking (one-time, since the migrations above were just applied by hand
+   rather than through `db-migrate.yml`) — run this in the SQL editor so the action doesn't try
+   to re-run migrations that already happened:
+
+   ```sql
+   create table if not exists public._migrations_applied (
+     filename text primary key,
+     applied_at timestamptz not null default now()
+   );
+   alter table public._migrations_applied enable row level security;
+
+   insert into public._migrations_applied (filename)
+   select f
+   from unnest(array[
+     '0001_schema.sql', '0002_profile_bootstrap.sql', '0003_rls.sql', '0004_realtime.sql',
+     '0005_routes.sql', '0006_zones_not_routes.sql', '0007_zone_colors.sql',
+     '0008_default_volunteer.sql', '0009_self_service_assignments.sql'
+   ]) as f
+   on conflict (filename) do nothing;
+   ```
+
+   From this point on, `db-migrate.yml` applies anything new automatically on push to `main`.
 
 ## Local development
 
@@ -77,7 +112,32 @@ map image, not verified address-by-address, so a handful of corner-lot houses ma
 wrong street and fail to geocode or land in the wrong place. That's expected — see PLAN.md open
 item 7.
 
+## Applying migrations
+
+New migrations under `supabase/migrations/` are applied automatically by `db-migrate.yml` on
+push to `main` (or trigger it manually from the Actions tab). To apply them by hand instead —
+e.g. to test one locally against the live project before pushing:
+
+```sh
+PGPASSWORD='...' supabase/migrate.sh   # password is in the "supabase blca-flier" 1Password item
+```
+
+Tracks what's already been applied in a `public._migrations_applied` table, so it's safe to run
+repeatedly — only new files get run, each in its own transaction alongside the tracking-row
+insert (so a mid-migration failure can't leave that bookkeeping out of sync with what actually
+ran). Requires the `psql` client, version-matched to the server (17) to avoid dump/restore
+surprises.
+
 ## Backing up the database
+
+Automatic: `db-backup.yml` runs nightly and uploads a GPG-encrypted dump as a build artifact
+(Actions tab → the run → Artifacts). Decrypt with:
+
+```sh
+gpg --batch --passphrase '...' --decrypt backup.sql.gpg > backup.sql   # same passphrase as BACKUP_ENCRYPTION_PASSPHRASE
+```
+
+Manual/local, unencrypted (for a maintainer's own machine, not for uploading anywhere):
 
 ```sh
 PGPASSWORD='...' supabase/backup.sh   # password is in the "supabase blca-flier" 1Password item

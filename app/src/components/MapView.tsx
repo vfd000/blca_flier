@@ -135,8 +135,10 @@ interface Props {
   houses: House[];
   zones: Zone[];
   statusByHouse: Map<number, DeliveryStatusValue>;
+  notesByHouse: Map<number, string | null>;
   canEditHouse: (house: House) => boolean;
   onSetStatus: (houseId: number, status: DeliveryStatusValue) => void;
+  onSaveNotes: (houseId: number, notes: string | null) => void;
   isAdmin: boolean;
   campaignId: string | null;
   assignments: Assignment[];
@@ -158,8 +160,10 @@ export function MapView({
   houses,
   zones,
   statusByHouse,
+  notesByHouse,
   canEditHouse,
   onSetStatus,
+  onSaveNotes,
   isAdmin,
   campaignId,
   assignments,
@@ -253,11 +257,14 @@ export function MapView({
       </MapContainer>
       {editMode === "view" && openHouse && (
         <HousePanel
+          key={openHouse.id}
           house={openHouse}
           zone={openHouseZone}
           status={statusByHouse.get(openHouse.id) ?? "not_started"}
+          notes={notesByHouse.get(openHouse.id) ?? null}
           canEdit={canEditHouse(openHouse)}
           onSetStatus={(status) => onSetStatus(openHouse.id, status)}
+          onSaveNotes={(notes) => onSaveNotes(openHouse.id, notes)}
           onClose={() => setOpenHouseId(null)}
           isAdmin={isAdmin}
           campaignId={campaignId}

@@ -52,9 +52,12 @@ export interface DeliveryStatus {
   campaign_id: string;
   house_id: number;
   status: DeliveryStatusValue;
+  notes: string | null;
   updated_by: string | null;
   updated_at: string;
 }
+
+export const SUSPECT_EMPTY_NOTE = "Suspected empty";
 
 export interface Invitation {
   id: number;

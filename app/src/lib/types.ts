@@ -57,8 +57,6 @@ export interface DeliveryStatus {
   updated_at: string;
 }
 
-export const SUSPECT_EMPTY_NOTE = "Suspected empty";
-
 export interface Invitation {
   id: number;
   email: string;

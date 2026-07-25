@@ -1,21 +1,22 @@
-import { SUSPECT_EMPTY_NOTE } from "./types";
-
 export const NOTE_SEPARATOR = "; ";
+export const SUSPECT_EMPTY_NOTE = "Suspected empty";
+export const RESIDENT_REFUSED_NOTE = "Resident refused";
 
-/** Toggles a canned "Suspected empty" flag on/off within a free-text notes string, preserving anything else already there. */
-export function toggleSuspectEmpty(notes: string | null): string | null {
-  const segments = (notes ?? "")
+function segments(notes: string | null): string[] {
+  return (notes ?? "")
     .split(NOTE_SEPARATOR)
     .map((s) => s.trim())
     .filter(Boolean);
-  const idx = segments.findIndex((s) => s.toLowerCase() === SUSPECT_EMPTY_NOTE.toLowerCase());
-  const next = idx >= 0 ? segments.filter((_, i) => i !== idx) : [...segments, SUSPECT_EMPTY_NOTE];
+}
+
+/** Toggles a canned tag on/off within a free-text notes string, preserving anything else already there. */
+export function toggleTag(notes: string | null, tag: string): string | null {
+  const segs = segments(notes);
+  const idx = segs.findIndex((s) => s.toLowerCase() === tag.toLowerCase());
+  const next = idx >= 0 ? segs.filter((_, i) => i !== idx) : [...segs, tag];
   return next.length > 0 ? next.join(NOTE_SEPARATOR) : null;
 }
 
-export function isSuspectEmpty(notes: string | null): boolean {
-  return (notes ?? "")
-    .split(NOTE_SEPARATOR)
-    .map((s) => s.trim().toLowerCase())
-    .includes(SUSPECT_EMPTY_NOTE.toLowerCase());
+export function hasTag(notes: string | null, tag: string): boolean {
+  return segments(notes).some((s) => s.toLowerCase() === tag.toLowerCase());
 }

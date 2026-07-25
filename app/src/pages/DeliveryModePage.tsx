@@ -5,10 +5,10 @@ import { useDeliveryStatus } from "../hooks/useDeliveryStatus";
 import { useAssignments } from "../hooks/useAssignments";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { directionsUrl, distanceMeters, formatDistance, nearestNeighborOrder, type LatLng } from "../lib/geo";
-import { isSuspectEmpty, toggleSuspectEmpty } from "../lib/notes";
 import { STATUS_LABELS, type DeliveryStatusValue, type House } from "../lib/types";
 import { InstallButton } from "../components/InstallButton";
 import { DeliveryMap } from "../components/DeliveryMap";
+import { NotesEditor } from "../components/NotesEditor";
 
 // Suburban GPS accuracy under tree cover is often 15-30m, so "arrived"
 // needs enough slack to trigger while still standing on the right porch.
@@ -177,21 +177,6 @@ function TargetCard({
   onBackToAuto: () => void;
   onSaveNotes: (notes: string | null) => void;
 }) {
-  const [editingNotes, setEditingNotes] = useState(false);
-  const [draft, setDraft] = useState(notes ?? "");
-  const suspectEmpty = isSuspectEmpty(notes);
-
-  const startEditing = () => {
-    setDraft(notes ?? "");
-    setEditingNotes(true);
-  };
-
-  const saveNotes = () => {
-    const trimmed = draft.trim();
-    onSaveNotes(trimmed.length > 0 ? trimmed : null);
-    setEditingNotes(false);
-  };
-
   return (
     <div className={`delivery-target-card${arrived ? " arrived" : ""}`}>
       <p className="delivery-target-address">{house.address}</p>
@@ -208,41 +193,7 @@ function TargetCard({
         Get directions →
       </a>
 
-      {editingNotes ? (
-        <div className="delivery-notes-editor">
-          <textarea
-            className="delivery-notes-textarea"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="e.g. big dog, leave at side door..."
-            rows={2}
-            autoFocus
-          />
-          <div className="delivery-notes-editor-actions">
-            <button className="btn btn-primary" onClick={saveNotes}>
-              Save note
-            </button>
-            <button className="btn" onClick={() => setEditingNotes(false)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          {notes && <p className="delivery-target-notes">📝 {notes}</p>}
-          <div className="delivery-notes-actions">
-            <button className="btn" onClick={startEditing}>
-              📝 {notes ? "Edit note" : "Add note"}
-            </button>
-            <button
-              className={`btn${suspectEmpty ? " active" : ""}`}
-              onClick={() => onSaveNotes(toggleSuspectEmpty(notes))}
-            >
-              🏚️ {suspectEmpty ? "Marked suspect empty" : "Suspect empty"}
-            </button>
-          </div>
-        </>
-      )}
+      <NotesEditor notes={notes} onSaveNotes={onSaveNotes} onSetStatus={onSetStatus} />
 
       <div className="delivery-actions">
         {ACTION_ORDER.map((s) => (

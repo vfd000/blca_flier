@@ -18,6 +18,8 @@ See [PLAN.md](./PLAN.md) for the architecture, data model, and milestones.
   `main` (only when `supabase/migrations/**` changed), or on demand.
 - `.github/workflows/db-backup.yml` — nightly encrypted database backup, uploaded as a build
   artifact.
+- `.github/workflows/claude-security-review.yml` — AI security review on every PR, via
+  Anthropic's `claude-code-security-review` action.
 
 ## Delivery mode
 
@@ -53,7 +55,15 @@ with spotty cell service mid-route.
      it somewhere durable (the repo is public, so backups are GPG-encrypted before they're
      uploaded as a build artifact — anyone can download the artifact, but it's useless without
      this passphrase). **If you lose it, existing backups become unrecoverable.**
-5. In GitHub repo Settings → Pages, set the source to "GitHub Actions".
+   - `CLAUDE_API_KEY` — an Anthropic Console API key ([console.anthropic.com](https://console.anthropic.com)),
+     used by `claude-security-review.yml` to post AI-generated security findings on PRs. Billed
+     per token, separate from any Claude.ai subscription. Optional -- if unset, that workflow
+     just fails on every PR rather than posting anything; the rest of the app is unaffected.
+5. In GitHub repo Settings → Pages, set the source to "GitHub Actions". While there, under
+   Settings → Actions → General, make sure "Require approval for first-time contributors" (or
+   stricter) is set -- this repo is public, and `claude-security-review.yml` isn't hardened
+   against prompt injection from a malicious PR, so it shouldn't run unattended on a stranger's
+   first PR.
 6. Once the two secrets above are set, trigger `db-migrate.yml` once (Actions tab → the
    workflow → "Run workflow", or push a change under `supabase/migrations/`). It seeds
    `public._migrations_applied` with the 9 migrations already applied by hand above (a no-op on

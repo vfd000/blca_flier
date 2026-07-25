@@ -54,28 +54,10 @@ with spotty cell service mid-route.
      uploaded as a build artifact — anyone can download the artifact, but it's useless without
      this passphrase). **If you lose it, existing backups become unrecoverable.**
 5. In GitHub repo Settings → Pages, set the source to "GitHub Actions".
-6. Bootstrap migration tracking (one-time, since the migrations above were just applied by hand
-   rather than through `db-migrate.yml`) — run this in the SQL editor so the action doesn't try
-   to re-run migrations that already happened:
-
-   ```sql
-   create table if not exists public._migrations_applied (
-     filename text primary key,
-     applied_at timestamptz not null default now()
-   );
-   alter table public._migrations_applied enable row level security;
-
-   insert into public._migrations_applied (filename)
-   select f
-   from unnest(array[
-     '0001_schema.sql', '0002_profile_bootstrap.sql', '0003_rls.sql', '0004_realtime.sql',
-     '0005_routes.sql', '0006_zones_not_routes.sql', '0007_zone_colors.sql',
-     '0008_default_volunteer.sql', '0009_self_service_assignments.sql'
-   ]) as f
-   on conflict (filename) do nothing;
-   ```
-
-   From this point on, `db-migrate.yml` applies anything new automatically on push to `main`.
+6. Once the two secrets above are set, trigger `db-migrate.yml` once (Actions tab → the
+   workflow → "Run workflow", or push a change under `supabase/migrations/`). It seeds
+   `public._migrations_applied` with the 9 migrations already applied by hand above (a no-op on
+   every run after the first) and then applies anything new automatically from then on.
 
 ## Local development
 

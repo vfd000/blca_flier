@@ -9,10 +9,10 @@
 # Usage: PGPASSWORD='...' ./migrate.sh
 # (DB password: 1Password item "supabase blca-flier")
 #
-# NOTE: this project's migrations were applied by hand (via the Supabase
-# SQL editor) before this script existed, so public._migrations_applied
-# has to be bootstrapped once with the filenames already live before this
-# script's first run -- see the "Applying migrations" section in README.md.
+# This project's first 9 migrations were applied by hand (via the Supabase
+# SQL editor) before this script existed, so the baseline insert below
+# seeds them into public._migrations_applied as already-done -- a no-op
+# every run after the first, via ON CONFLICT DO NOTHING.
 set -euo pipefail
 
 : "${PGPASSWORD:?Set PGPASSWORD to the Supabase database password first}"
@@ -26,6 +26,15 @@ PSQL=(psql "host=aws-1-us-west-2.pooler.supabase.com port=6543 dbname=postgres u
     applied_at timestamptz not null default now()
   );
   alter table public._migrations_applied enable row level security;
+
+  insert into public._migrations_applied (filename)
+  select f
+  from unnest(array[
+    '0001_schema.sql', '0002_profile_bootstrap.sql', '0003_rls.sql', '0004_realtime.sql',
+    '0005_routes.sql', '0006_zones_not_routes.sql', '0007_zone_colors.sql',
+    '0008_default_volunteer.sql', '0009_self_service_assignments.sql'
+  ]) as f
+  on conflict (filename) do nothing;
 "
 
 for f in "$SCRIPT_DIR"/migrations/*.sql; do

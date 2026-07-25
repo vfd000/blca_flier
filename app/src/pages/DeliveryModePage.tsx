@@ -5,6 +5,7 @@ import { useDeliveryStatus } from "../hooks/useDeliveryStatus";
 import { useAssignments } from "../hooks/useAssignments";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { directionsUrl, distanceMeters, formatDistance, nearestNeighborOrder, type LatLng } from "../lib/geo";
+import { isSuspectEmpty, toggleSuspectEmpty } from "../lib/notes";
 import { STATUS_LABELS, type DeliveryStatusValue, type House } from "../lib/types";
 import { InstallButton } from "../components/InstallButton";
 import { DeliveryMap } from "../components/DeliveryMap";
@@ -25,7 +26,7 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
   const { session, profile } = useAuth();
   const { houses, zones } = useZonesAndHouses();
   const { assignments } = useAssignments(campaignId);
-  const { statusByHouse, setStatus } = useDeliveryStatus(campaignId);
+  const { statusByHouse, notesByHouse, setStatus, setNotes } = useDeliveryStatus(campaignId);
   const geo = useGeolocation();
   const [manualTargetId, setManualTargetId] = useState<number | null>(null);
   const [showList, setShowList] = useState(false);
@@ -92,13 +93,16 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
 
       {target ? (
         <TargetCard
+          key={target.id}
           house={target}
           status={statusByHouse.get(target.id) ?? "not_started"}
+          notes={notesByHouse.get(target.id) ?? null}
           distance={targetDistance}
           arrived={arrived}
           isManual={manualTargetId === target.id}
           onSetStatus={(status) => handleSetStatus(target.id, status)}
           onBackToAuto={() => setManualTargetId(null)}
+          onSaveNotes={(notes) => setNotes(target.id, notes, session.user.id)}
         />
       ) : (
         <div className="delivery-done">
@@ -132,7 +136,10 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
         <ul className="delivery-list">
           {orderedPending.map((house) => (
             <li key={house.id} className={house.id === target?.id ? "is-target" : ""}>
-              <span>{house.address}</span>
+              <span>
+                {house.address}
+                {notesByHouse.get(house.id) && <span title={notesByHouse.get(house.id) ?? undefined}> 📝</span>}
+              </span>
               <span className="delivery-list-right">
                 {here && <span className="delivery-list-distance">{formatDistance(distanceMeters(here, house))}</span>}
                 {house.id !== target?.id && (
@@ -152,20 +159,39 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
 function TargetCard({
   house,
   status,
+  notes,
   distance,
   arrived,
   isManual,
   onSetStatus,
   onBackToAuto,
+  onSaveNotes,
 }: {
   house: PlacedHouse;
   status: DeliveryStatusValue;
+  notes: string | null;
   distance: number | null;
   arrived: boolean;
   isManual: boolean;
   onSetStatus: (status: DeliveryStatusValue) => void;
   onBackToAuto: () => void;
+  onSaveNotes: (notes: string | null) => void;
 }) {
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [draft, setDraft] = useState(notes ?? "");
+  const suspectEmpty = isSuspectEmpty(notes);
+
+  const startEditing = () => {
+    setDraft(notes ?? "");
+    setEditingNotes(true);
+  };
+
+  const saveNotes = () => {
+    const trimmed = draft.trim();
+    onSaveNotes(trimmed.length > 0 ? trimmed : null);
+    setEditingNotes(false);
+  };
+
   return (
     <div className={`delivery-target-card${arrived ? " arrived" : ""}`}>
       <p className="delivery-target-address">{house.address}</p>
@@ -181,6 +207,43 @@ function TargetCard({
       <a className="delivery-directions-link" href={directionsUrl(house)} target="_blank" rel="noreferrer">
         Get directions →
       </a>
+
+      {editingNotes ? (
+        <div className="delivery-notes-editor">
+          <textarea
+            className="delivery-notes-textarea"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="e.g. big dog, leave at side door..."
+            rows={2}
+            autoFocus
+          />
+          <div className="delivery-notes-editor-actions">
+            <button className="btn btn-primary" onClick={saveNotes}>
+              Save note
+            </button>
+            <button className="btn" onClick={() => setEditingNotes(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {notes && <p className="delivery-target-notes">📝 {notes}</p>}
+          <div className="delivery-notes-actions">
+            <button className="btn" onClick={startEditing}>
+              📝 {notes ? "Edit note" : "Add note"}
+            </button>
+            <button
+              className={`btn${suspectEmpty ? " active" : ""}`}
+              onClick={() => onSaveNotes(toggleSuspectEmpty(notes))}
+            >
+              🏚️ {suspectEmpty ? "Marked suspect empty" : "Suspect empty"}
+            </button>
+          </div>
+        </>
+      )}
+
       <div className="delivery-actions">
         {ACTION_ORDER.map((s) => (
           <button

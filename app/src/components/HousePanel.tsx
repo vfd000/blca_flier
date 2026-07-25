@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { isSuspectEmpty, toggleSuspectEmpty } from "../lib/notes";
 import { STATUS_LABELS, type DeliveryStatusValue, type House, type Profile, type Zone } from "../lib/types";
 
 const ORDER: DeliveryStatusValue[] = ["not_started", "no_answer", "delivered", "skipped"];
@@ -15,8 +17,10 @@ interface Props {
   house: House;
   zone: Zone | null;
   status: DeliveryStatusValue;
+  notes: string | null;
   canEdit: boolean;
   onSetStatus: (status: DeliveryStatusValue) => void;
+  onSaveNotes: (notes: string | null) => void;
   onClose: () => void;
   isAdmin: boolean;
   campaignId: string | null;
@@ -32,8 +36,10 @@ export function HousePanel({
   house,
   zone,
   status,
+  notes,
   canEdit,
   onSetStatus,
+  onSaveNotes,
   onClose,
   isAdmin,
   campaignId,
@@ -44,6 +50,21 @@ export function HousePanel({
   onChangeZone,
   onAssignVolunteer,
 }: Props) {
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [draft, setDraft] = useState(notes ?? "");
+  const suspectEmpty = isSuspectEmpty(notes);
+
+  const startEditing = () => {
+    setDraft(notes ?? "");
+    setEditingNotes(true);
+  };
+
+  const saveNotes = () => {
+    const trimmed = draft.trim();
+    onSaveNotes(trimmed.length > 0 ? trimmed : null);
+    setEditingNotes(false);
+  };
+
   return (
     <div className="house-panel">
       <button className="house-panel-close" onClick={onClose} aria-label="Close">
@@ -56,23 +77,56 @@ export function HousePanel({
       <p className="house-panel-status">
         Status: <strong>{STATUS_LABELS[status]}</strong>
       </p>
+      {notes && !editingNotes && <p className="house-panel-notes">📝 {notes}</p>}
       {canEdit ? (
-        <div className="house-panel-actions">
-          {ORDER.map((s) => (
-            <button
-              key={s}
-              className={`btn status-btn status-btn-${s}`}
-              disabled={s === status}
-              onClick={() => onSetStatus(s)}
-            >
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="house-panel-actions">
+            {ORDER.map((s) => (
+              <button
+                key={s}
+                className={`btn status-btn status-btn-${s}`}
+                disabled={s === status}
+                onClick={() => onSetStatus(s)}
+              >
+                {STATUS_LABELS[s]}
+              </button>
+            ))}
+          </div>
+          {editingNotes ? (
+            <div className="delivery-notes-editor">
+              <textarea
+                className="delivery-notes-textarea"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="e.g. big dog, leave at side door..."
+                rows={2}
+                autoFocus
+              />
+              <div className="delivery-notes-editor-actions">
+                <button className="btn btn-primary" onClick={saveNotes}>
+                  Save note
+                </button>
+                <button className="btn" onClick={() => setEditingNotes(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="delivery-notes-actions">
+              <button className="btn" onClick={startEditing}>
+                📝 {notes ? "Edit note" : "Add note"}
+              </button>
+              <button
+                className={`btn${suspectEmpty ? " active" : ""}`}
+                onClick={() => onSaveNotes(toggleSuspectEmpty(notes))}
+              >
+                🏚️ {suspectEmpty ? "Marked suspect empty" : "Suspect empty"}
+              </button>
+            </div>
+          )}
+        </>
       ) : (
-        <p className="house-panel-readonly">
-          {house.notes ? house.notes : "Sign in as the assigned volunteer to update this house."}
-        </p>
+        !notes && <p className="house-panel-readonly">Sign in as the assigned volunteer to update this house.</p>
       )}
       {isAdmin && (
         <div className="house-panel-admin">

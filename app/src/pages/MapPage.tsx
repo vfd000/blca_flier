@@ -22,7 +22,7 @@ interface Notice {
 export function MapPage({ campaignId }: { campaignId: string | null }) {
   const { session, profile, isAdmin } = useAuth();
   const { zones, houses, removeHouseLocally, upsertHouseLocally } = useZonesAndHouses();
-  const { statusByHouse, setStatus } = useDeliveryStatus(campaignId);
+  const { statusByHouse, notesByHouse, setStatus, setNotes } = useDeliveryStatus(campaignId);
   const { assignments, refresh: refreshAssignments } = useAssignments(campaignId);
   const { profiles } = useProfiles();
 
@@ -45,6 +45,11 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
   const handleSetStatus = (houseId: number, status: DeliveryStatusValue) => {
     if (!session || !campaignId) return;
     setStatus(houseId, status, session.user.id);
+  };
+
+  const handleSaveNotes = (houseId: number, notes: string | null) => {
+    if (!session || !campaignId) return;
+    setNotes(houseId, notes, session.user.id);
   };
 
   const handlePlaceHouse = async (houseId: number, lat: number, lng: number) => {
@@ -208,10 +213,12 @@ export function MapPage({ campaignId }: { campaignId: string | null }) {
         houses={houses}
         zones={zones}
         statusByHouse={statusByHouse}
+        notesByHouse={notesByHouse}
         canEditHouse={(house) =>
           campaignId != null && (isAdmin || canEditHouse(assignments, profile?.id, house.id, house.zone_id))
         }
         onSetStatus={handleSetStatus}
+        onSaveNotes={handleSaveNotes}
         isAdmin={isAdmin}
         campaignId={campaignId}
         assignments={assignments}

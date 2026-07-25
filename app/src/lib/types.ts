@@ -79,3 +79,6 @@ export const STATUS_LABELS: Record<DeliveryStatusValue, string> = {
   delivered: "Delivered",
   skipped: "Skipped",
 };
+
+/** Statuses that still count as "left to do" -- not yet delivered or skipped. */
+export const PENDING_STATUSES: DeliveryStatusValue[] = ["not_started", "no_answer"];

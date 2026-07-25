@@ -1,0 +1,37 @@
+name: Claude security review
+
+# AI security review on every PR, via Anthropic's purpose-built action.
+# Pinned to a specific commit (not @main) since that repo has no tagged
+# releases -- avoids an unreviewed upstream change silently landing with
+# write access to this repo's PRs.
+#
+# SECURITY: this action is not hardened against prompt injection -- a
+# malicious PR description/diff could try to manipulate its output. This
+# repo is public, so make sure Settings > Actions > General has "Require
+# approval for first-time contributors" (or stricter) set, so this doesn't
+# run unattended on a stranger's first PR.
+#
+# Requires the CLAUDE_API_KEY repo secret: an Anthropic Console API key
+# (console.anthropic.com), billed per token -- separate from any Claude.ai
+# subscription.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  security-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+
+      - uses: anthropics/claude-code-security-review@0c6a49f1fa56a1d472575da86a94dbc1edb78eda
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}

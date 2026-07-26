@@ -144,6 +144,14 @@ houses/zones.
   email + role; when that person signs in with Google using that exact email, they get the role.
   Actually emailing them the link is a manual step (or a Phase-later improvement using e.g.
   Supabase's email sending or a mailto link) for now.
+- **Remote log shipping (future).** `activity_log` (added later — see its migration) currently
+  only lives in Supabase Postgres, queryable by hand. Plan for later: point Grafana Cloud's free
+  tier at the Supabase Postgres connection directly as a data source (no ETL/shipping pipeline
+  needed, since the data's already relational) for dashboards/alerts; Grafana Cloud's free tier
+  also includes Loki if we ever want true log-line ingestion (e.g. GitHub Actions run output)
+  alongside it. Prometheus doesn't fit here -- it's a pull-based metrics system, not a log store,
+  so an Elastic-family option (e.g. Bonsai's free Elasticsearch tier) would need a small scheduled
+  job shipping new rows via HTTP, more moving parts than querying Postgres directly.
 
 ## 8. Milestones
 

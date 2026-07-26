@@ -46,6 +46,11 @@ for f in "$SCRIPT_DIR"/migrations/*.sql; do
   fi
   echo "applying $name"
   "${PSQL[@]}" -1 -f - <<SQL
+-- DDL (e.g. creating a trigger) needs an exclusive lock; without a
+-- timeout, a concurrent transaction on the same table can make this hang
+-- indefinitely -- and worse, queue up and block other queries behind it
+-- (Postgres lock queues are roughly FIFO). Fail fast and loud instead.
+set lock_timeout = '5s';
 \i $f
 insert into public._migrations_applied (filename) values ('$name');
 SQL

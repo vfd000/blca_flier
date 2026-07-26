@@ -606,6 +606,47 @@ body {
   background: #f0fdf4;
 }
 
+@keyframes delivery-confirm-flash {
+  0%,
+  100% {
+    background: #f5f3ff;
+    border-color: #9333ea;
+  }
+  50% {
+    background: #fef2f2;
+    border-color: #dc2626;
+  }
+}
+
+.delivery-confirm-card {
+  border: 3px solid #9333ea;
+  border-radius: 12px;
+  padding: 2.25rem 1.25rem;
+  margin: 1rem 0;
+  text-align: center;
+  animation: delivery-confirm-flash 0.3s ease-in-out 3;
+}
+
+.delivery-confirm-check {
+  font-size: 2.5rem;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  color: #16a34a;
+}
+
+.delivery-confirm-address {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+
+.delivery-confirm-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin: 0;
+}
+
 .delivery-target-address {
   font-size: 1.4rem;
   font-weight: 700;

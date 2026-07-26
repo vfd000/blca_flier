@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useZonesAndHouses } from "../hooks/useZonesAndHouses";
 import { useDeliveryStatus } from "../hooks/useDeliveryStatus";
@@ -15,6 +15,12 @@ import { NotesEditor } from "../components/NotesEditor";
 const ARRIVAL_RADIUS_M = 40;
 const ACTION_ORDER: DeliveryStatusValue[] = ["delivered", "no_answer", "skipped"];
 
+// How long the confirmation flash holds the just-marked house on screen
+// before advancing to the next target -- without this, the card swaps to
+// the next house's address instantly, and it's easy to tap the same status
+// button again on what's now a different house without noticing.
+const CONFIRM_FLASH_MS = 900;
+
 type PlacedHouse = House & LatLng;
 
 function hasCoords(h: House): h is PlacedHouse {
@@ -30,6 +36,14 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
   const [manualTargetId, setManualTargetId] = useState<number | null>(null);
   const [showList, setShowList] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [justMarked, setJustMarked] = useState<{ house: House; status: DeliveryStatusValue } | null>(null);
+  const justMarkedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (justMarkedTimeout.current) clearTimeout(justMarkedTimeout.current);
+    };
+  }, []);
 
   if (!session || !profile) return <p className="hint">Sign in to use delivery mode.</p>;
   if (!campaignId) return <p className="hint">Pick a campaign above first.</p>;
@@ -67,6 +81,13 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
   const handleSetStatus = (houseId: number, status: DeliveryStatusValue) => {
     setStatus(houseId, status, session.user.id);
     if (manualTargetId === houseId) setManualTargetId(null);
+
+    const markedHouse = myHouses.find((h) => h.id === houseId);
+    if (markedHouse) {
+      if (justMarkedTimeout.current) clearTimeout(justMarkedTimeout.current);
+      setJustMarked({ house: markedHouse, status });
+      justMarkedTimeout.current = setTimeout(() => setJustMarked(null), CONFIRM_FLASH_MS);
+    }
   };
 
   if (myHouses.length === 0 && unplacedCount === 0) {
@@ -90,7 +111,9 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
       {!geo.supported && <p className="delivery-gps-hint">GPS isn't available on this device -- showing address order.</p>}
       {geo.error && <p className="delivery-gps-hint">Location error: {geo.error}. Showing address order instead.</p>}
 
-      {target ? (
+      {justMarked ? (
+        <ConfirmFlashCard house={justMarked.house} status={justMarked.status} />
+      ) : target ? (
         <TargetCard
           key={target.id}
           house={target}
@@ -151,6 +174,17 @@ export function DeliveryModePage({ campaignId }: { campaignId: string | null }) 
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** Briefly shown in place of the target card right after marking a status, so the swap to the next house isn't instant and easy to miss. */
+function ConfirmFlashCard({ house, status }: { house: House; status: DeliveryStatusValue }) {
+  return (
+    <div className="delivery-confirm-card">
+      <div className="delivery-confirm-check">✓</div>
+      <p className="delivery-confirm-address">{house.address}</p>
+      <p className="delivery-confirm-label">Marked {STATUS_LABELS[status]}</p>
     </div>
   );
 }

@@ -57,6 +57,25 @@ export interface DeliveryStatus {
   updated_at: string;
 }
 
+export type ActivityAction = "assignment_claimed" | "assignment_released" | "status_changed" | "notes_changed";
+
+export interface ActivityLogEntry {
+  id: number;
+  occurred_at: string;
+  actor_id: string | null;
+  action: ActivityAction;
+  campaign_id: string | null;
+  zone_id: number | null;
+  house_id: number | null;
+  details: {
+    volunteer_id?: string;
+    old_status?: DeliveryStatusValue | null;
+    new_status?: DeliveryStatusValue;
+    old_notes?: string | null;
+    new_notes?: string | null;
+  };
+}
+
 export interface Invitation {
   id: number;
   email: string;

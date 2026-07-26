@@ -4,14 +4,17 @@ import { useAuth } from "../hooks/useAuth";
 import { useZonesAndHouses } from "../hooks/useZonesAndHouses";
 import { useAssignments } from "../hooks/useAssignments";
 import { useCampaigns } from "../hooks/useCampaigns";
+import { useActivityLog } from "../hooks/useActivityLog";
+import { useProfiles } from "../hooks/useProfiles";
 import { defaultZoneColorHex } from "../lib/colors";
-import type { Invitation, Profile, Role } from "../lib/types";
+import { STATUS_LABELS, type ActivityLogEntry, type Invitation, type Profile, type Role } from "../lib/types";
 
 export function AdminPage({ campaignId }: { campaignId: string | null }) {
   return (
     <div className="admin-page">
       <ZonesSection />
       <AssignmentsSection campaignId={campaignId} />
+      <ActivityLogSection campaignId={campaignId} />
       <PeopleSection />
       <InvitationsSection />
       <CampaignsSection />
@@ -272,6 +275,85 @@ function AssignmentsSection({ campaignId }: { campaignId: string | null }) {
               </li>
             ))}
           </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+function ActivityLogSection({ campaignId }: { campaignId: string | null }) {
+  const { zones, houses } = useZonesAndHouses();
+  const { profiles } = useProfiles();
+  const { entries, loading, hasMore, loadMore } = useActivityLog(campaignId);
+
+  const profileById = new Map(profiles.map((p) => [p.id, p]));
+  const zoneById = new Map(zones.map((z) => [z.id, z]));
+  const houseById = new Map(houses.map((h) => [h.id, h]));
+
+  const personLabel = (id: string | null | undefined) => {
+    if (!id) return "Someone";
+    const p = profileById.get(id);
+    return p?.display_name ?? p?.email ?? id;
+  };
+
+  const targetLabel = (entry: ActivityLogEntry) => {
+    if (entry.house_id != null) return houseById.get(entry.house_id)?.address ?? `house #${entry.house_id}`;
+    if (entry.zone_id != null) {
+      const z = zoneById.get(entry.zone_id);
+      return z ? `Zone ${z.number}${z.name ? ` (${z.name})` : ""}` : `zone #${entry.zone_id}`;
+    }
+    return "something";
+  };
+
+  const describe = (entry: ActivityLogEntry) => {
+    const actor = personLabel(entry.actor_id);
+    const target = targetLabel(entry);
+    const { volunteer_id, old_status, new_status, new_notes } = entry.details;
+    switch (entry.action) {
+      case "assignment_claimed":
+        return volunteer_id && volunteer_id !== entry.actor_id
+          ? `${actor} assigned ${target} to ${personLabel(volunteer_id)}`
+          : `${actor} claimed ${target}`;
+      case "assignment_released":
+        return volunteer_id && volunteer_id !== entry.actor_id
+          ? `${actor} unassigned ${target} from ${personLabel(volunteer_id)}`
+          : `${actor} released ${target}`;
+      case "status_changed":
+        return `${actor} marked ${target} as ${new_status ? STATUS_LABELS[new_status] : "unknown"} (was ${
+          old_status ? STATUS_LABELS[old_status] : "nothing"
+        })`;
+      case "notes_changed":
+        return new_notes ? `${actor} updated notes on ${target}: "${new_notes}"` : `${actor} cleared notes on ${target}`;
+      default:
+        return `${actor} changed ${target}`;
+    }
+  };
+
+  return (
+    <section className="admin-section">
+      <h3>Activity log</h3>
+      <p className="hint">
+        Every claim, release, and delivery status/notes change for this campaign, in order --
+        unlike the lists above, this history survives even after something is released or changed
+        again.
+      </p>
+      {!campaignId && <p className="hint">Pick a campaign above first.</p>}
+      {campaignId && (
+        <>
+          <ul className="activity-log-list">
+            {entries.map((entry) => (
+              <li key={entry.id}>
+                <span className="activity-log-time">{new Date(entry.occurred_at).toLocaleString()}</span>
+                <span className="activity-log-desc">{describe(entry)}</span>
+              </li>
+            ))}
+            {entries.length === 0 && !loading && <li className="hint">No activity yet for this campaign.</li>}
+          </ul>
+          {hasMore && (
+            <button className="btn" onClick={loadMore} disabled={loading}>
+              {loading ? "Loading..." : "Load more"}
+            </button>
+          )}
         </>
       )}
     </section>

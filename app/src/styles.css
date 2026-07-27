@@ -5,7 +5,13 @@
 html,
 body,
 #root {
-  height: 100%;
+  /* dvh accounts for mobile browser chrome (e.g. Safari's address bar);
+     without it, 100% here can resolve taller than what's actually visible,
+     pushing content below the fold with no way to scroll to it. Falls
+     back to plain vh on browsers that don't support dvh (the second
+     declaration is simply ignored there). */
+  height: 100vh;
+  height: 100dvh;
   margin: 0;
 }
 
@@ -105,7 +111,11 @@ body {
     flex-direction: column;
   }
   .map-wrap {
+    /* See the html/body/#root comment above -- plain vh can render taller
+       than the real visible viewport on iOS Safari, shrinking the room
+       left for the sidebar/house panel below it. */
     height: 60vh;
+    height: 60dvh;
   }
   .map-sidebar {
     width: 100%;
@@ -160,6 +170,14 @@ body {
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
   width: min(320px, calc(100% - 2rem));
+  /* This panel has grown a lot taller since notes/admin controls were
+     added -- on a short mobile viewport (especially with the map above
+     it eating most of the screen) its bottom buttons could render off
+     the visible screen with no way to reach them. Cap it and scroll
+     internally instead, regardless of how tall the content gets. */
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
   z-index: 1000;
 }
 
